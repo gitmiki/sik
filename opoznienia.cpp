@@ -3,49 +3,34 @@
 #include <cstdlib>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/shared_ptr.hpp>
 #include <string>
 #include <ctime>
 
 #include "err.hpp"
+#include "udp_server.cpp"
+#include "config.hpp"
 
 using boost::asio::ip::udp;
 
-bool DEBUG = true;
-
-int UDP_PORT = 3382; //default 3382, change with -u
-int INTERFACE_PORT = 3637; //default 3637, change with -U
-int FIND_INTERVAL = 1; //default 1, change with -t
-int SERVICES_INTERVAL = 10; //default 10, change with -T
-int REFRESH_TIME = 1; //default 1, change with -v
-bool DNS_SD = false; //default faulse, change with -s
-
 void set_options(int argc, char *argv[]);
-
-void server(boost::asio::io_service& io_service)
-{
-	int max_length = 1024;
-  udp::socket sock(io_service, udp::endpoint(udp::v4(), UDP_PORT));
-  for (;;)
-  {
-    char data[max_length];
-    udp::endpoint sender_endpoint;
-    size_t length = sock.receive_from(
-        boost::asio::buffer(data, max_length), sender_endpoint);
-    sock.send_to(boost::asio::buffer(data, length), sender_endpoint);
-  }
-}
 
 int main(int argc, char *argv[]) {
 	set_options(argc, argv);
 
-	boost::asio::io_service io_service;
-	try {
-		server(io_service);
+	try
+	  {
+	    boost::asio::io_service io_service;
 
-	}
-	catch(std::exception& e) {
-		std::cerr << "Exception: " << e.what() << "\n";
-	}
+	    server s(io_service, UDP_PORT);
+
+	    io_service.run();
+	  }
+	  catch (std::exception& e)
+	  {
+	    std::cerr << "Exception: " << e.what() << "\n";
+	  }
 	return 0;
 }
 
