@@ -16,7 +16,7 @@
 
 using boost::asio::ip::udp;
 
-enum { max_length = 10240 };
+enum { max_length = 1024 };
 
 int main(int argc, char* argv[])
 {
@@ -36,19 +36,12 @@ int main(int argc, char* argv[])
     udp::resolver::query query(udp::v4(), argv[1], argv[2]);
     udp::resolver::iterator iterator = resolver.resolve(query);
 
-    using namespace std; // For strlen.
-    std::cout << "Enter message: ";
-    char request[max_length];
-    std::cin.getline(request, max_length);
-    size_t request_length = strlen(request);
-
     struct timeval tv;
 	  gettimeofday(&tv,NULL);
 	  //return tv.tv_usec;
 	  boost::uint64_t b = 1000000 * tv.tv_sec + tv.tv_usec;
     boost::uint64_t buff = htobe64(b);
-    request_length = sizeof(buff);
-    std::cout<< "Sending b = " << b << " buff = " << buff << std::endl;
+    size_t request_length = sizeof(buff);
 
     struct timespec start, end, diff;
     clock_gettime(0, &start);
@@ -60,13 +53,12 @@ int main(int argc, char* argv[])
         boost::asio::buffer(reply, max_length), sender_endpoint);
 
     clock_gettime(0, &end);
-    std::cerr << "Send time: " << reply[0] << "\n" << "Reply time: " << reply[1] << "\n";
+    std::cerr << "Sent at: " << be64toh(reply[0]) << "\n" << "Answered at: " << be64toh(reply[1]) << "\n";
 
 	  diff.tv_sec = end.tv_sec - start.tv_sec;
 	  diff.tv_nsec = end.tv_nsec - start.tv_nsec;
     std::cout << "Wysłanie pakietu UDP i odebranie odpowiedzi zajmuje " << diff.tv_sec << " sekund oraz " << diff.tv_nsec << " nanosekund\n";
 
-    std::cout << "Reply is: " << buff;
     std::cout << "\n";
   }
   catch (std::exception& e)
