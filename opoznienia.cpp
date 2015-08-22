@@ -12,6 +12,7 @@
 #include "err.hpp"
 #include "udp_server.cpp"
 #include "udp_client.cpp"
+#include "tcp_client.cpp"
 #include "config.hpp"
 
 using boost::asio::ip::udp;
@@ -28,13 +29,17 @@ int main(int argc, char *argv[]) {
 	    boost::asio::io_service io_service_client;
 
 	    udp_server s(io_service, UDP_PORT);
-			udp_client c(io_service, "localhost", std::to_string(UDP_PORT));
-	    //io_service_server.run();
 			std::thread thread1{[&io_service](){ io_service.run(); }};
+			udp_client c(io_service, "localhost", std::to_string(UDP_PORT));
 	    std::thread thread2{[&io_service](){ io_service.run(); }};
+			tcp_client c2(io_service, "localhost");
+	    //io_service_server.run();
+
+	    std::thread thread3{[&io_service](){ io_service.run(); }};
 
 			thread1.join();
 			thread2.join();
+			thread3.join();
 			//for (int i = 0; i < 100; i++) { std::cout << "lalalala\n"; sleep(1); }
 	  }
 	  catch (std::exception& e)

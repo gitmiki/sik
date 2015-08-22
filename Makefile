@@ -7,7 +7,7 @@ TARGETS = opoznienia client
 
 all: $(TARGETS)
 
-opoznienia: opoznienia.o udp_server.o udp_client.o err.o
+opoznienia: opoznienia.o udp_server.o udp_client.o tcp_client.o err.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 client: client.o err.o
@@ -16,6 +16,8 @@ client: client.o err.o
 udp_server.o: udp_server.cpp config.hpp
 
 udp_client.o: udp_client.cpp config.hpp
+
+tcp_client.o: tcp_client.cpp config.hpp
 
 opoznienia.o: opoznienia.cpp err.hpp config.hpp
 

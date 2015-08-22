@@ -20,11 +20,11 @@ public:
     endpoint_ = *iter;
     struct timeval tv;
 	  gettimeofday(&tv,NULL);
-    t1 = boost::posix_time::microsec_clock::local_time();
 
 	  boost::uint64_t b = 1000000 * tv.tv_sec + tv.tv_usec;
     boost::uint64_t buff = htobe64(b);
 
+    t1 = boost::posix_time::microsec_clock::local_time();
     socket_.async_send_to(boost::asio::buffer(&buff, sizeof(buff)), endpoint_,
       boost::bind(&udp_client::handle_send_to, this,
         boost::asio::placeholders::error,
@@ -38,7 +38,6 @@ public:
     udp::endpoint sender_endpoint;
     size_t reply_length = socket_.receive_from(
         boost::asio::buffer(reply, sizeof(reply)), sender_endpoint);
-
     t2 = boost::posix_time::microsec_clock::local_time();
 
     boost::posix_time::time_duration msdiff = t2 - t1;
