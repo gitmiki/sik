@@ -24,9 +24,8 @@ public:
 
 	  boost::uint64_t b = 1000000 * tv.tv_sec + tv.tv_usec;
     boost::uint64_t buff = htobe64(b);
-    size_t request_length = sizeof(buff);
 
-    socket_.async_send_to(boost::asio::buffer(&buff, request_length), endpoint_,
+    socket_.async_send_to(boost::asio::buffer(&buff, sizeof(buff)), endpoint_,
       boost::bind(&udp_client::handle_send_to, this,
         boost::asio::placeholders::error,
         boost::asio::placeholders::bytes_transferred));
@@ -38,7 +37,7 @@ public:
     boost::uint64_t reply[2];
     udp::endpoint sender_endpoint;
     size_t reply_length = socket_.receive_from(
-        boost::asio::buffer(reply, max_length), sender_endpoint);
+        boost::asio::buffer(reply, sizeof(reply)), sender_endpoint);
 
     t2 = boost::posix_time::microsec_clock::local_time();
 
@@ -53,8 +52,5 @@ private:
   udp::endpoint endpoint_;
   boost::posix_time::ptime t1;
   boost::posix_time::ptime t2;
-  enum { max_length = 1024 };
-  //boost::uint64_t answer[0];
   boost::uint64_t answer[2];
-  //char [max_length];
 };

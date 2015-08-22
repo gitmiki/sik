@@ -21,8 +21,8 @@ void set_options(int argc, char *argv[]);
 int main(int argc, char *argv[]) {
 	set_options(argc, argv);
 
-	//try
-	  //{
+	try
+	  {
 			boost::asio::io_service io_service;
 	    boost::asio::io_service io_service_server;
 	    boost::asio::io_service io_service_client;
@@ -36,11 +36,11 @@ int main(int argc, char *argv[]) {
 			thread1.join();
 			thread2.join();
 			//for (int i = 0; i < 100; i++) { std::cout << "lalalala\n"; sleep(1); }
-	  //}
-	  //catch (std::exception& e)
-	  //{
-	    //std::cerr << "Exception: " << e.what() << "\n";
-	  //}
+	  }
+	  catch (std::exception& e)
+	  {
+	    std::cerr << "Exception: " << e.what() << "\n";
+	  }
 	return 0;
 }
 

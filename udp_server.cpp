@@ -15,7 +15,7 @@ public:
       socket_(io_service, udp::endpoint(udp::v4(), port))
   {
     socket_.async_receive_from(
-        boost::asio::buffer(answer, max_length), sender_endpoint_,
+        boost::asio::buffer(&answer[0], sizeof(answer[0])), sender_endpoint_,
         boost::bind(&udp_server::handle_receive_from, this,
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred));
@@ -29,11 +29,11 @@ public:
     boost::uint64_t b = 1000000 * tv.tv_sec + tv.tv_usec;
     answer[1] = htobe64(b);
     if (DEBUG)
-      std::cout << "SERVER: Sending back time " << b << " as " << answer[1] << std::endl;
+      std::cout << "SERVER: Sending back time " << b << std::endl;
     if (!error && bytes_recvd > 0)
     {
       socket_.async_send_to(
-          boost::asio::buffer(answer, max_length), sender_endpoint_,
+          boost::asio::buffer(answer, sizeof(answer)), sender_endpoint_,
           boost::bind(&udp_server::handle_send_to, this,
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred));
@@ -41,7 +41,7 @@ public:
     else
     {
       socket_.async_receive_from(
-          boost::asio::buffer(answer, max_length), sender_endpoint_,
+          boost::asio::buffer(&answer[0], sizeof(answer[0])), sender_endpoint_,
           boost::bind(&udp_server::handle_receive_from, this,
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred));
@@ -51,7 +51,7 @@ public:
   void handle_send_to(const boost::system::error_code& error, size_t bytes_sent)
   {
     socket_.async_receive_from(
-        boost::asio::buffer(answer, max_length), sender_endpoint_,
+        boost::asio::buffer(answer, sizeof(answer)), sender_endpoint_,
         boost::bind(&udp_server::handle_receive_from, this,
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred));
@@ -61,8 +61,5 @@ private:
   boost::asio::io_service& io_service_;
   udp::socket socket_;
   udp::endpoint sender_endpoint_;
-  enum { max_length = 1024 };
-  //boost::uint64_t answer[0];
   boost::uint64_t answer[2];
-  //char [max_length];
 };

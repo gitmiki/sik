@@ -39,12 +39,14 @@ int main(int argc, char* argv[])
     struct timeval tv;
 	  gettimeofday(&tv,NULL);
 	  //return tv.tv_usec;
+    boost::posix_time::ptime t1 = boost::posix_time::microsec_clock::local_time();
+
 	  boost::uint64_t b = 1000000 * tv.tv_sec + tv.tv_usec;
     boost::uint64_t buff = htobe64(b);
     size_t request_length = sizeof(buff);
 
-    struct timespec start, end, diff;
-    clock_gettime(0, &start);
+    //struct timespec start, end, diff;
+    //clock_gettime(0, &start);
     s.send_to(boost::asio::buffer(&buff, request_length), *iterator);
 
     boost::uint64_t reply[2];
@@ -52,12 +54,16 @@ int main(int argc, char* argv[])
     size_t reply_length = s.receive_from(
         boost::asio::buffer(reply, max_length), sender_endpoint);
 
-    clock_gettime(0, &end);
+    //clock_gettime(0, &end);
+    boost::posix_time::ptime t2 = boost::posix_time::microsec_clock::local_time();
+
+    boost::posix_time::time_duration msdiff = t2 - t1;
+    std::cout << "Wysłanie pakietu UDP i odebranie odpowiedzi zajmuje " << msdiff.total_microseconds() << " mikrosekund" << std::endl;
     std::cerr << "Sent at: " << be64toh(reply[0]) << "\n" << "Answered at: " << be64toh(reply[1]) << "\n";
 
-	  diff.tv_sec = end.tv_sec - start.tv_sec;
-	  diff.tv_nsec = end.tv_nsec - start.tv_nsec;
-    std::cout << "Wysłanie pakietu UDP i odebranie odpowiedzi zajmuje " << diff.tv_sec << " sekund oraz " << diff.tv_nsec << " nanosekund\n";
+	  //diff.tv_sec = end.tv_sec - start.tv_sec;
+	  //diff.tv_nsec = end.tv_nsec - start.tv_nsec;
+    //std::cout << "Wysłanie pakietu UDP i odebranie odpowiedzi zajmuje " << diff.tv_sec << " sekund oraz " << diff.tv_nsec << " nanosekund\n";
 
     std::cout << "\n";
   }
