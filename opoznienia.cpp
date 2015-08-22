@@ -5,11 +5,13 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
+#include <thread>
 #include <string>
 #include <ctime>
 
 #include "err.hpp"
 #include "udp_server.cpp"
+#include "udp_client.cpp"
 #include "config.hpp"
 
 using boost::asio::ip::udp;
@@ -19,18 +21,26 @@ void set_options(int argc, char *argv[]);
 int main(int argc, char *argv[]) {
 	set_options(argc, argv);
 
-	try
-	  {
-	    boost::asio::io_service io_service;
+	//try
+	  //{
+			boost::asio::io_service io_service;
+	    boost::asio::io_service io_service_server;
+	    boost::asio::io_service io_service_client;
 
-	    server s(io_service, UDP_PORT);
+	    udp_server s(io_service, UDP_PORT);
+			udp_client c(io_service, "localhost", std::to_string(UDP_PORT));
+	    //io_service_server.run();
+			std::thread thread1{[&io_service](){ io_service.run(); }};
+	    std::thread thread2{[&io_service](){ io_service.run(); }};
 
-	    io_service.run();
-	  }
-	  catch (std::exception& e)
-	  {
-	    std::cerr << "Exception: " << e.what() << "\n";
-	  }
+			thread1.join();
+			thread2.join();
+			//for (int i = 0; i < 100; i++) { std::cout << "lalalala\n"; sleep(1); }
+	  //}
+	  //catch (std::exception& e)
+	  //{
+	    //std::cerr << "Exception: " << e.what() << "\n";
+	  //}
 	return 0;
 }
 

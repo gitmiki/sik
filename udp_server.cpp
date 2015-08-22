@@ -1,13 +1,3 @@
-//
-// async_udp_echo_server.cpp
-// ~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2008 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
 #include <cstdlib>
 #include <iostream>
 #include <ctime>
@@ -17,17 +7,16 @@
 
 using boost::asio::ip::udp;
 
-class server
+class udp_server
 {
 public:
-  server(boost::asio::io_service& io_service, short port)
+  udp_server(boost::asio::io_service& io_service, short port)
     : io_service_(io_service),
       socket_(io_service, udp::endpoint(udp::v4(), port))
   {
-    answer[1] = 666;
     socket_.async_receive_from(
         boost::asio::buffer(answer, max_length), sender_endpoint_,
-        boost::bind(&server::handle_receive_from, this,
+        boost::bind(&udp_server::handle_receive_from, this,
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred));
   }
@@ -40,12 +29,12 @@ public:
     boost::uint64_t b = 1000000 * tv.tv_sec + tv.tv_usec;
     answer[1] = htobe64(b);
     if (DEBUG)
-      std::cout << "Sending back time " << b << " as " << answer[1] << std::endl;
+      std::cout << "SERVER: Sending back time " << b << " as " << answer[1] << std::endl;
     if (!error && bytes_recvd > 0)
     {
       socket_.async_send_to(
           boost::asio::buffer(answer, max_length), sender_endpoint_,
-          boost::bind(&server::handle_send_to, this,
+          boost::bind(&udp_server::handle_send_to, this,
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred));
     }
@@ -53,7 +42,7 @@ public:
     {
       socket_.async_receive_from(
           boost::asio::buffer(answer, max_length), sender_endpoint_,
-          boost::bind(&server::handle_receive_from, this,
+          boost::bind(&udp_server::handle_receive_from, this,
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred));
     }
@@ -63,7 +52,7 @@ public:
   {
     socket_.async_receive_from(
         boost::asio::buffer(answer, max_length), sender_endpoint_,
-        boost::bind(&server::handle_receive_from, this,
+        boost::bind(&udp_server::handle_receive_from, this,
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred));
   }
