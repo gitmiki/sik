@@ -1,25 +1,14 @@
 CXX = g++
 CXXFLAGS	= -Wall -O2 -Wextra -std=c++11
 LDFLAGS = -lboost_system -lpthread
-TARGETS = opoznienia client
+TARGETS = opoznienia
 
 .PHONY: all clean debug
 
 all: $(TARGETS)
 
-opoznienia: opoznienia.o udp_server.o udp_client.o tcp_client.o err.o
+opoznienia: opoznienia.o udp_server.o udp_client.o tcp_client.o mDNSreceiver.o mDNSsender.o err.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
-
-client: client.o err.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
-
-udp_server.o: udp_server.cpp config.hpp
-
-udp_client.o: udp_client.cpp config.hpp
-
-tcp_client.o: tcp_client.cpp config.hpp
-
-opoznienia.o: opoznienia.cpp err.hpp config.hpp
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@

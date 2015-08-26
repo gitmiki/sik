@@ -10,9 +10,11 @@
 #include <ctime>
 
 #include "err.hpp"
-#include "udp_server.cpp"
-#include "udp_client.cpp"
-#include "tcp_client.cpp"
+#include "udp_server.hpp"
+#include "udp_client.hpp"
+#include "tcp_client.hpp"
+#include "mDNSreceiver.cpp"
+#include "mDNSsender.cpp"
 #include "config.hpp"
 
 using boost::asio::ip::udp;
@@ -33,14 +35,22 @@ int main(int argc, char *argv[]) {
 			udp_client c(io_service, "localhost", std::to_string(UDP_PORT));
 	    std::thread thread2{[&io_service](){ io_service.run(); }};
 			tcp_client c2(io_service, "localhost");
-	    //io_service_server.run();
-
 	    std::thread thread3{[&io_service](){ io_service.run(); }};
+
+			mDNSreceiver rMulditcast(io_service,
+					boost::asio::ip::address::from_string("0.0.0.0"),
+					boost::asio::ip::address::from_string("224.0.0.251"));
+			std::thread thread4{[&io_service](){ io_service.run(); }};
+
+			mDNSsender sMutlicast(io_service, boost::asio::ip::address::from_string("224.0.0.251"));
+			std::thread thread5{[&io_service](){ io_service.run(); }};
 
 			thread1.join();
 			thread2.join();
 			thread3.join();
-			//for (int i = 0; i < 100; i++) { std::cout << "lalalala\n"; sleep(1); }
+			thread4.join();
+			thread5.join();
+
 	  }
 	  catch (std::exception& e)
 	  {

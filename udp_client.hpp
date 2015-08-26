@@ -1,7 +1,5 @@
-#ifndef UDP_SERVER_HPP
-#define UDP_SERVER_HPP
-
-#include "config.hpp"
+#ifndef UDP_CLIENT_HPP
+#define UDP_CLIENT_HPP
 
 #include <cstdlib>
 #include <iostream>
@@ -12,22 +10,19 @@
 
 using boost::asio::ip::udp;
 
-class udp_server
+class udp_client
 {
 public:
-  udp_server(boost::asio::io_service& io_service, short port);
-
-  void handle_receive_from(const boost::system::error_code& error,
-      size_t bytes_recvd);
-
+  udp_client(boost::asio::io_service& io_service, const std::string& host, const std::string& port);
   void handle_send_to(const boost::system::error_code& error, size_t bytes_sent);
 
 private:
   boost::asio::io_service& io_service_;
   udp::socket socket_;
-  udp::endpoint sender_endpoint_;
+  udp::endpoint endpoint_;
+  boost::posix_time::ptime t1;
+  boost::posix_time::ptime t2;
   boost::uint64_t answer[2];
 };
 
-
-#endif /* UDP_SERVER_HPP */
+#endif /* UDP_CLIENT_HPP */
