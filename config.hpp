@@ -1,5 +1,5 @@
-#ifndef CONSTS_HPP
-#define CONSTS_HPP
+#ifndef CONFIG_HPP
+#define CONFIG_HPP
 
 static bool DEBUG = true;
 
@@ -10,4 +10,4 @@ static int SERVICES_INTERVAL = 10; //default 10, change with -T
 static float REFRESH_TIME = 1; //default 1, change with -v
 static bool DNS_SD = false; //default faulse, change with -s
 
-#endif
+#endif /* CONFIG_HPP */

@@ -2,7 +2,7 @@
 
 udp_server::udp_server(boost::asio::io_service& io_service, short port)
   : io_service_(io_service),
-    socket_(io_service, udp::endpoint(udp::v4(), 3382))
+    socket_(io_service, udp::endpoint(udp::v4(), port))
 {
   socket_.async_receive_from(
       boost::asio::buffer(&answer[0], sizeof(answer[0])), sender_endpoint_,
@@ -18,7 +18,7 @@ void udp_server::handle_receive_from(const boost::system::error_code& error,
   gettimeofday(&tv,NULL);
   boost::uint64_t b = 1000000 * tv.tv_sec + tv.tv_usec;
   answer[1] = htobe64(b);
-  if (DEBUG)
+  //if (DEBUG)
     std::cout << "SERVER: Sending back time " << b << std::endl;
   if (!error && bytes_recvd > 0)
   {

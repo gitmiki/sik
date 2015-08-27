@@ -13,8 +13,8 @@
 #include "udp_server.hpp"
 #include "udp_client.hpp"
 #include "tcp_client.hpp"
-#include "mDNSreceiver.cpp"
-#include "mDNSsender.cpp"
+#include "mDNS_server.cpp"
+#include "mDNS_client.cpp"
 #include "config.hpp"
 
 using boost::asio::ip::udp;

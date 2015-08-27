@@ -1,14 +1,11 @@
 #ifndef UDP_SERVER_HPP
 #define UDP_SERVER_HPP
 
-#include "config.hpp"
-
 #include <cstdlib>
 #include <iostream>
 #include <ctime>
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
-#include "config.hpp"
 
 using boost::asio::ip::udp;
 
