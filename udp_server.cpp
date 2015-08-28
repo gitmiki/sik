@@ -46,9 +46,12 @@ void udp_server::handle_receive_from(const boost::system::error_code& error,
 
 void udp_server::handle_send_to(const boost::system::error_code& error, size_t bytes_sent)
 {
-  socket_.async_receive_from(
-      boost::asio::buffer(answer, sizeof(answer)), sender_endpoint_,
-      boost::bind(&udp_server::handle_receive_from, this,
-        boost::asio::placeholders::error,
-        boost::asio::placeholders::bytes_transferred));
+  if (!error && bytes_sent > 0)
+  {
+    socket_.async_receive_from(
+        boost::asio::buffer(answer, sizeof(answer)), sender_endpoint_,
+        boost::bind(&udp_server::handle_receive_from, this,
+          boost::asio::placeholders::error,
+          boost::asio::placeholders::bytes_transferred));
+  }
 }
