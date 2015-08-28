@@ -1,14 +1,6 @@
 #ifndef TCP_CLIENT_HPP
 #define TCP_CLIENT_HPP
 
-#include <iostream>
-#include <istream>
-#include <ostream>
-#include <string>
-#include <ctime>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-
 using boost::asio::ip::tcp;
 
 class tcp_client

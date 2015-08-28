@@ -1,3 +1,10 @@
+#include <cstdlib>
+#include <iostream>
+#include <ctime>
+#include <boost/bind.hpp>
+#include <boost/asio.hpp>
+
+#include "config.hpp"
 #include "udp_client.hpp"
 
 udp_client::udp_client(boost::asio::io_service& io_service, const std::string& host, const std::string& port)

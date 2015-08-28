@@ -1,13 +1,6 @@
 #ifndef UDP_CLIENT_HPP
 #define UDP_CLIENT_HPP
 
-#include <cstdlib>
-#include <iostream>
-#include <ctime>
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
-#include "config.hpp"
-
 using boost::asio::ip::udp;
 
 class udp_client

@@ -1,3 +1,11 @@
+#include <iostream>
+#include <istream>
+#include <ostream>
+#include <string>
+#include <ctime>
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+
 #include "tcp_client.hpp"
 
 tcp_client::tcp_client(boost::asio::io_service& io_service,

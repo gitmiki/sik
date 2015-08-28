@@ -13,7 +13,7 @@
 #include "udp_server.hpp"
 #include "udp_client.hpp"
 #include "tcp_client.hpp"
-#include "mDNS_server.cpp"
+//#include "mDNS_server.cpp"
 #include "mDNS.hpp"
 #include "config.hpp"
 
@@ -37,19 +37,20 @@ int main(int argc, char *argv[]) {
 			tcp_client c2(io_service, "localhost");
 	    std::thread thread3{[&io_service](){ io_service.run(); }};
 
-			mDNSreceiver rMulditcast(io_service,
+			mDNS Multicast(io_service,
 					boost::asio::ip::address::from_string("0.0.0.0"),
 					boost::asio::ip::address::from_string("224.0.0.251"));
 			std::thread thread4{[&io_service](){ io_service.run(); }};
 
-			mDNS sMutlicast(io_service, boost::asio::ip::address::from_string("224.0.0.251"));
+			/*mDNS sMutlicast(io_service,
+					boost::asio::ip::address::from_string("224.0.0.251"));
 			std::thread thread5{[&io_service](){ io_service.run(); }};
-
+*/
 			thread1.join();
 			thread2.join();
 			thread3.join();
 			thread4.join();
-			thread5.join();
+			//thread5.join();
 
 	  }
 	  catch (std::exception& e)
