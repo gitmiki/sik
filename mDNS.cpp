@@ -151,6 +151,10 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
 
     std::cout<< "Wartość header->qr to " << ntohl(header->qr) << std::endl;
 
+    char hostname[1024];
+    gethostname(hostname, 1024);
+    std::cout<< "hostname = " << hostname << std::endl;
+
     translation[strlen((char*) query_name)-1] = '.';
     //std::cout << "OTRZYMANA WIADOMOŚĆ TO " << translation << " " << SERVICE_NAME << std::endl;
     if (ntohl(header->qr) == 0) {// query
