@@ -14,7 +14,7 @@
 #include "udp_client.hpp"
 #include "tcp_client.hpp"
 #include "mDNS_server.cpp"
-#include "mDNS_client.cpp"
+#include "mDNS.hpp"
 #include "config.hpp"
 
 using boost::asio::ip::udp;
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 					boost::asio::ip::address::from_string("224.0.0.251"));
 			std::thread thread4{[&io_service](){ io_service.run(); }};
 
-			mDNSsender sMutlicast(io_service, boost::asio::ip::address::from_string("224.0.0.251"));
+			mDNS sMutlicast(io_service, boost::asio::ip::address::from_string("224.0.0.251"));
 			std::thread thread5{[&io_service](){ io_service.run(); }};
 
 			thread1.join();

@@ -7,7 +7,7 @@ TARGETS = opoznienia
 
 all: $(TARGETS)
 
-opoznienia: opoznienia.o udp_server.o udp_client.o tcp_client.o mDNS_server.o mDNS_client.o err.o
+opoznienia: opoznienia.o udp_server.o udp_client.o tcp_client.o mDNS.o mDNS_server.o err.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 %.o: %.cpp

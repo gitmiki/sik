@@ -18,8 +18,7 @@ typedef struct DNSHeader {
 } DNSHeader;
 
 typedef struct DNSQuery {
-  unsigned char name; /// ?????????? jaki typ????
-  uint16_t qtype;
+  uint16_t type;
   uint16_t qclass; //should be 1 since we are on internet
 } DNSQuery;
 
