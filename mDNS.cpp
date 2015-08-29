@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <iomanip>
+#include <cstdlib>
 #include <boost/asio.hpp>
 #include "boost/bind.hpp"
 
@@ -31,7 +32,29 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   socket_.set_option(
       boost::asio::ip::multicast::join_group(multicast_address));
 
-  prepare_query();
+  char hostname[64];
+  gethostname(hostname, 64);
+  //for (unsigned int i = 0; i < strlen(hostname); i++) {
+  //  my_name[i] = hostname[i];
+  //}
+  //service_name = (unsigned char*) SERVICE_NAME;// + (unsigned char*) hostname;
+  //my_name += (unsigned char*) hostname;
+
+  //std::cout<< "my_name = " << service_name << "\n Długość nazwy hosta = " << strlen(hostname) << std::endl;
+  unsigned char tmp[strlen(hostname)+strlen((char*) SERVICE_NAME)+1];
+  unsigned int i = 0;
+  for (; i < strlen(hostname); i++) {
+    tmp[i] = hostname[i];
+    std::cout << tmp[i] << std::endl;
+  }
+  tmp[i++] = '.';
+  for (; i <= strlen(hostname) + strlen((char*) SERVICE_NAME); i++) {
+    tmp[i] = SERVICE_NAME[i-strlen(hostname)-1];
+  }
+  my_name = (unsigned char*) tmp;
+  //std::cout<< "my_name = " << my_name << std::endl;
+  //prepare_PTR_query();
+  prepare_PTR_query();
   send_query();
 
   receive();
@@ -72,20 +95,22 @@ void mDNS::handle_timeout(const boost::system::error_code& error)
 {
   if (!error)
   {
+    prepare_PTR_query();
     send_query();
   }
 }
 
-void mDNS::prepare_query() {
+void mDNS::prepare_PTR_query() {
   DNSHeader *header = NULL;
   DNSQuery *query = NULL;
   header = (DNSHeader*)&query_buf;
-  header->ID = (unsigned short) htons (getpid());
-  header->rd = 1;
+  header->ID = htons (rand()%65537);
+  std::cout << "wylosowane ID to " << ntohs(header->ID) << std::endl;
+  header->rd = 0;
+  header->qr = 0;
   header->tc = 0;
   header->aa = 0;
   header->opcode = 0;
-  header->qr = 0;
   header->rcode = 0;
   header->cd = 0;
   header->ad = 0;
@@ -102,6 +127,44 @@ void mDNS::prepare_query() {
   query->type = htons(12); // PTR
   query->qclass = htons(1);
   query_buf_length = sizeof(DNSHeader) + strlen((const char*)query_name) + 1 + sizeof(DNSQuery);
+  std::cout << "Wartość header->qr przed wysłaniem to " << ntohl(header->qr) << std::endl;
+}
+
+void mDNS::prepare_A_query() {
+
+}
+
+void mDNS::prepare_PTR_response(unsigned char *response, uint16_t ID) {
+  DNSHeader *header = NULL;
+  DNSQuery *query = NULL;
+  RRecord *record = NULL;
+  header = (DNSHeader*)&response;
+  header->ID = htons (rand()%65537);
+  header->rd = 0;
+  header->qr = 1;
+  header->tc = 0;
+  header->aa = 0;
+  header->opcode = 0;
+  header->rcode = 0;
+  header->cd = 0;
+  header->ad = 0;
+  header->z = 0;
+  header->ra = 0;
+  header->qdcount = 0;
+  header->ancount = htons(1);
+  header->nscount = 0;
+  header->arcount = 0;
+  //query_name = (unsigned char*)&query_buf[sizeof(DNSHeader)];
+  //unsigned char* DNSname = (unsigned char*) SERVICE_NAME;
+  //ChangetoDnsNameFormat(query_name, DNSname);
+  //query = (DNSQuery*)&query_buf[sizeof(DNSHeader) + strlen((const char*) query_name)+1];
+  //query->type = htons(12); // PTR
+  //query->qclass = htons(1);
+  //query_buf_length = sizeof(DNSHeader) + strlen((const char*)query_name) + 1 + sizeof(DNSQuery);
+}
+
+void mDNS::prepare_A_response() {
+
 }
 
 void mDNS::send_query() {
@@ -114,7 +177,7 @@ void mDNS::send_query() {
 void mDNS::receive() {
   unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
   socket_.async_receive_from(
-      boost::asio::buffer(answer, sizeof(DNSHeader) + 256 + sizeof(DNSQuery)), sender_endpoint_,
+      boost::asio::buffer(answer), sender_endpoint_,
       boost::bind(&mDNS::handle_receive_from, this,
         boost::asio::placeholders::error,
         boost::asio::placeholders::bytes_transferred,
@@ -125,16 +188,20 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
     size_t bytes_recvd, unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)])
 {
 
+
   if (!error && bytes_recvd > 0)
   {
     sleep(1);
     DNSHeader *header = NULL;
     DNSQuery *query = NULL;
-    header = (DNSHeader*)&answer;
+    header = (DNSHeader*)answer;
     //header->qr = 1; //becoming response
+    std::cout<<"Otrzymane ID to " << ntohs(header->ID) << std::endl;
+    std::cout<<"Pakiet truncated to " << ntohs(header->tc) << std::endl;
     query_name = (unsigned char*)&answer[sizeof(DNSHeader)];
 
-    query = (DNSQuery*)&query_buf[sizeof(DNSHeader) + strlen((const char*) query_name)+1];
+    //std::cout << "Zabieram " << strlen((const char*) query_name) << std::endl;
+    query = (DNSQuery*)&query_buf[sizeof(DNSHeader) + strlen((const char*) query_name) + 1];
     //ChangetoDnsNameFormat(query_name, query_name);
     //std::cout<< "query->type = " << query->type << " + " << ntohs(query->type) <<std::endl;
     //std::cout<< "query->qclass = " << query->qclass << " + " << ntohs(query->qclass) << std::endl;
@@ -149,40 +216,42 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
         translation[i-1] = '.';
     }
 
-    std::cout<< "Wartość header->qr to " << ntohl(header->qr) << std::endl;
-
-    char hostname[1024];
-    gethostname(hostname, 1024);
-    std::cout<< "hostname = " << hostname << std::endl;
+    //std::cout<< "Wartość header->qr to " << ntohs(header->qr) << std::endl
 
     translation[strlen((char*) query_name)-1] = '.';
-    //std::cout << "OTRZYMANA WIADOMOŚĆ TO " << translation << " " << SERVICE_NAME << std::endl;
-    if (ntohl(header->qr) == 0) {// query
-      switch (ntohs(query->type)) {
-        case 12: //PTR
-          if (strcmp(translation, SERVICE_NAME) == 0)
-            std::cout << " Otrzymano zapytanie PTR \n";
-          break;
-        case 1: //A
-          std::cout << " Otrzymano zapytanie A\n";
-          break;
-        default: // ignorujemy
-          std::cout << "cicho ignorujemy\n";
-          break;
-      }
+    std::cout << "OTRZYMANA WIADOMOŚĆ TO " << translation << std::endl;
 
-    }
-    else if (ntohl(header->qr) == 1) { // response
-      switch (ntohs(query->type)) {
-        case 12: //PTR
-          std::cout << " Otrzymano odpowiedź PTR \n";
-          break;
-        case 1: //A
-          std::cout << " Otrzymano zapytanie A\n";
-          break;
-        default: // ignorujemy
-          std::cout << "cicho ignorujemy\n";
-          break;
+    if (ntohs(header->tc) == 0) { // przyjmujemy tylko nie truncated
+      if (ntohs(header->qr) == 0) {// query
+        switch (ntohs(query->type)) {
+          case 12: //PTR
+            if (strcmp(translation, SERVICE_NAME) == 0) {
+              std::cout << " Otrzymano zapytanie PTR \n";
+              unsigned char response[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
+              prepare_PTR_response(response, ntohs(header->ID));
+            }
+            break;
+          case 1: //A
+            std::cout << " Otrzymano zapytanie A\n";
+            break;
+          default: // ignorujemy
+            std::cout << "cicho ignorujemy zapytanie\n";
+            break;
+        }
+
+      }
+      else if (ntohs(header->qr) == 1) { // response
+        switch (ntohs(query->type)) {
+          case 12: //PTR
+            std::cout << " Otrzymano odpowiedź PTR \n";
+            break;
+          case 1: //A
+            std::cout << " Otrzymano odpowiedź A\n";
+            break;
+          default: // ignorujemy
+            std::cout << "cicho ignorujemy odpowiedź\n";
+            break;
+        }
       }
     }
   }
