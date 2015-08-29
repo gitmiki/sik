@@ -30,6 +30,7 @@ private:
   boost::asio::ip::udp::endpoint sender_endpoint_;
   boost::asio::deadline_timer timer_;
   unsigned char my_name[128];
+  unsigned char response[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
   unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
   int message_count_;
   std::string message_;

@@ -93,6 +93,8 @@ void mDNS::handle_timeout(const boost::system::error_code& error)
 }
 
 void mDNS::prepare_PTR_query() {
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+    query_buf[i] = '\0';
   DNSHeader *header = NULL;
   DNSQuery *query = NULL;
   header = (DNSHeader*)&query_buf;
@@ -134,7 +136,8 @@ void mDNS::prepare_A_query() {
 }
 
 void mDNS::response_PTR(uint16_t ID) {
-  unsigned char response[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+    response[i] = '\0';
   DNSHeader *header = NULL;
   RRecord *record = NULL;
   header = (DNSHeader*)&response;
@@ -160,20 +163,6 @@ void mDNS::response_PTR(uint16_t ID) {
   //unsigned char *DNSname = (unsigned char*) my_name;
   ChangetoDnsNameFormat(record_name, my_name);
 
-  char translation[strlen((char*) record_name)];
-  for (unsigned int i = 1; i < strlen((char*) record_name); i++) {
-    int x = (int) record_name[i];
-    //std::cout<< x << " ";
-    if (x >= 32 && x <= 126) // check if printable
-      translation[i-1] = static_cast<char>(x);//(char) std::to_string(x).c_str();
-    else
-      translation[i-1] = '.';
-  }
-  translation[strlen((char*) record_name)-1] = '.';
-  translation[strlen((char*) record_name)] = '\0';
-  std::cout << "Wysyłana odpowiedź to " << translation << std::endl;
-
-
   record = (RRecord*)&response[sizeof(DNSHeader) + strlen((const char*) record_name)+1];
   record->rtype = htons(12);
   record->rclass = htons(1);
@@ -186,13 +175,6 @@ void mDNS::response_PTR(uint16_t ID) {
   socket_.send_to(
       boost::asio::buffer(response, sizeof(DNSHeader) + strlen((const char*) record_name) + 1 + sizeof(RRecord) + strlen((const char*) record_rdata + 1)), endpoint_
       );
-  //std::cout << "my dns name = " << record_name << std::endl;
-  //unsigned char* DNSname = (unsigned char*) SERVICE_NAME;
-  //ChangetoDnsNameFormat(query_name, DNSname);
-  //query = (DNSQuery*)&query_buf[sizeof(DNSHeader) + strlen((const char*) query_name)+1];
-  //query->type = htons(12); // PTR
-  //query->qclass = htons(1);
-  //query_buf_length = sizeof(DNSHeader) + strlen((const char*)query_name) + 1 + sizeof(DNSQuery);
 }
 
 void mDNS::prepare_A_response() {
@@ -207,10 +189,8 @@ void mDNS::send_query() {
 }
 
 void mDNS::receive() {
-  //unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
-  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++)
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
     answer[i] = '\0';
-  //std::cout<< "my_name = " << my_name << std::endl;
   socket_.async_receive(
     boost::asio::buffer(answer),// sender_endpoint_,
     boost::bind(&mDNS::handle_receive_from, this,
@@ -227,13 +207,6 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
   {
     DNSHeader *header = NULL;
     header = (DNSHeader*)answer;
-    //std::cout<<"Otrzymane ID to " << ntohs(header->ID) << std::endl;
-    std::cout<<"Pytanie/Odpowiedz = " << ntohs(header->qr) << std::endl;
-
-
-    //std::cout<< "Wartość header->qr to " << ntohs(header->qr) << std::endl
-
-
     if (ntohs(header->tc) == 0) { // przyjmujemy tylko nie truncated
       if (ntohs(header->qr) == 0) {// query
         DNSQuery *query = NULL;
