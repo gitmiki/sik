@@ -43,7 +43,7 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   for (; i <= strlen(hostname) + strlen((char*) SERVICE_NAME); i++) {
     my_name[i] = SERVICE_NAME[i-strlen(hostname)-1];
   }
-  my_name[i] = '\0';
+  //my_name[i] = '\0';
   //std::cout<< "my_name = " << my_name << std::endl;
   //prepare_PTR_query();
   srand ( time(NULL) );
@@ -126,7 +126,7 @@ void mDNS::change_PTR_query_ID() {
   DNSHeader *header = NULL;
   header = (DNSHeader*)&query_buf;
   header->ID = htons (rand()%65537);
-  std::cout << "wylosowane ID to " << ntohs(header->ID) << std::endl;
+  //std::cout << "wylosowane ID to " << ntohs(header->ID) << std::endl;
 }
 
 void mDNS::prepare_A_query() {
@@ -170,6 +170,7 @@ void mDNS::response_PTR(uint16_t ID) {
       translation[i-1] = '.';
   }
   translation[strlen((char*) record_name)-1] = '.';
+  translation[strlen((char*) record_name)] = '\0';
   std::cout << "Wysyłana odpowiedź to " << translation << std::endl;
 
 
@@ -206,26 +207,27 @@ void mDNS::send_query() {
 }
 
 void mDNS::receive() {
-  unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
+  //unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++)
+    answer[i] = '\0';
   //std::cout<< "my_name = " << my_name << std::endl;
   socket_.async_receive(
     boost::asio::buffer(answer),// sender_endpoint_,
     boost::bind(&mDNS::handle_receive_from, this,
       boost::asio::placeholders::error,
-      boost::asio::placeholders::bytes_transferred,
-      answer));
+      boost::asio::placeholders::bytes_transferred));
 }
 
 void mDNS::handle_receive_from(const boost::system::error_code& error,
-    size_t bytes_recvd, unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)])
+    size_t bytes_recvd)
 {
-  receive();
+  //receive();
 
   if (!error && bytes_recvd > 0)
   {
     DNSHeader *header = NULL;
     header = (DNSHeader*)answer;
-    std::cout<<"Otrzymane ID to " << ntohs(header->ID) << std::endl;
+    //std::cout<<"Otrzymane ID to " << ntohs(header->ID) << std::endl;
     std::cout<<"Pytanie/Odpowiedz = " << ntohs(header->qr) << std::endl;
 
 
@@ -297,5 +299,5 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
       }
     }
   }
-  //receive();
+  receive();
 }

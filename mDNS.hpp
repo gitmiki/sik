@@ -22,7 +22,7 @@ public:
   void receive();
   void handle_timeout(const boost::system::error_code& error);
   void handle_receive_from(const boost::system::error_code& error,
-      size_t bytes_recvd, unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)]);
+      size_t bytes_recvd);
 
 private:
   boost::asio::ip::udp::socket socket_;
@@ -30,6 +30,7 @@ private:
   boost::asio::ip::udp::endpoint sender_endpoint_;
   boost::asio::deadline_timer timer_;
   unsigned char my_name[128];
+  unsigned char answer[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
   int message_count_;
   std::string message_;
   unsigned char query_buf[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
