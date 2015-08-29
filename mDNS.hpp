@@ -12,8 +12,9 @@ public:
       int interval
   );
   void prepare_PTR_query();
+  void change_PTR_query_ID();
   void prepare_A_query();
-  void prepare_PTR_response(unsigned char *response, uint16_t ID);
+  void response_PTR(uint16_t ID);
   void prepare_A_response();
   void ChangetoDnsNameFormat(unsigned char* dns, unsigned char* host);
   void handle_send_to(const boost::system::error_code& error);
@@ -28,7 +29,7 @@ private:
   boost::asio::ip::udp::endpoint endpoint_;
   boost::asio::ip::udp::endpoint sender_endpoint_;
   boost::asio::deadline_timer timer_;
-  unsigned char* my_name;
+  unsigned char my_name[128];
   int message_count_;
   std::string message_;
   unsigned char query_buf[sizeof(DNSHeader) + 256 + sizeof(DNSQuery)];
