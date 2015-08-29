@@ -51,9 +51,6 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   }
 
   std::cout << "Moje IP to " << getIP() << std::endl;
-  //my_name[i] = '\0';
-  //std::cout<< "my_name = " << my_name << std::endl;
-  //prepare_PTR_query();
   srand ( time(NULL) );
   prepare_PTR_query();
   send_PTR_query();
@@ -63,21 +60,45 @@ mDNS::mDNS(boost::asio::io_service& io_service,
 
 std::string mDNS::getIP()
 {
-  struct ifaddrs * ifAddrStruct=NULL;
-  struct ifaddrs * ifa=NULL;
-  void * tmpAddrPtr=NULL;
+  struct ifaddrs *myaddrs, *ifa;
+  void *in_addr;
+  char buf[64];
 
-  getifaddrs(&ifAddrStruct);
-  char addressBuffer[INET_ADDRSTRLEN];
-  for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
-      if (ifa->ifa_addr->sa_family == AF_INET) {
-          tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-          inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+  if(getifaddrs(&myaddrs) != 0)
+  {
+      perror("getifaddrs");
+      exit(1);
+  }
+
+  for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
+  {
+      if (ifa->ifa_addr == NULL)
+          continue;
+      if (!(ifa->ifa_flags & IFF_UP))
+          continue;
+
+      switch (ifa->ifa_addr->sa_family)
+      {
+          case AF_INET:
+          {
+              struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+              in_addr = &s4->sin_addr;
+              break;
+          }
+          default:
+              continue;
+      }
+
+      if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
+      {
+          printf("%s: inet_ntop failed!\n", ifa->ifa_name);
       }
   }
-  if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
-  return (std::string) addressBuffer;
+
+  freeifaddrs(myaddrs);
+  return std::string(buf);
 }
+
 
 void mDNS::ChangetoDnsNameFormat(unsigned char* dns, unsigned char* host) {
     unsigned int lock = 0;
