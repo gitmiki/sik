@@ -70,30 +70,32 @@ std::string mDNS::getIP()
       exit(1);
   }
 
-  for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
-  {
-      if (ifa->ifa_addr == NULL)
-          continue;
-      if (!(ifa->ifa_flags & IFF_UP))
-          continue;
+  //for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
+  //{
+  ifa = myaddrs;
+  ifa = ifa->ifa_next->ifa_next->ifa_next->ifa_next;
+      //if (ifa->ifa_addr == NULL)
+      //    continue;
+      //if (!(ifa->ifa_flags & IFF_UP))
+      //    continue;
 
-      switch (ifa->ifa_addr->sa_family)
-      {
-          case AF_INET:
-          {
+      //switch (ifa->ifa_addr->sa_family)
+      //{
+          //case AF_INET:
+          //{
               struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
               in_addr = &s4->sin_addr;
-              break;
-          }
-          default:
-              continue;
-      }
+              //break;
+          //}
+          //default:
+          //    continue;
+      //}
 
       if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
       {
           printf("%s: inet_ntop failed!\n", ifa->ifa_name);
       }
-  }
+  //}
 
   freeifaddrs(myaddrs);
   return std::string(buf);
