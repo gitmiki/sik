@@ -50,7 +50,7 @@ mDNS::mDNS(boost::asio::io_service& io_service,
     my_name[i] = SERVICE_NAME[i-strlen(hostname)-1];
   }
 
-  getIP();
+  std::cout << "Moje IP to " << getIP() << std::endl;
   //my_name[i] = '\0';
   //std::cout<< "my_name = " << my_name << std::endl;
   //prepare_PTR_query();
@@ -61,33 +61,23 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   receive();
 }
 
-void mDNS::getIP()
+std::string mDNS::getIP()
 {
   struct ifaddrs * ifAddrStruct=NULL;
   struct ifaddrs * ifa=NULL;
   void * tmpAddrPtr=NULL;
 
   getifaddrs(&ifAddrStruct);
-
-  ifa = ifAddrStruct;
-  ifa = ifa->ifa_next->ifa_next->ifa_next->ifa_next;
-  //int i = 0;
-  //for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
-      //std::cout << "przejśce nr " << i++ << std::endl;
-      //if (!ifa->ifa_addr) {
-      //    continue;
-      //}
-      if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
-          // is a valid IP4 Address
+  char addressBuffer[INET_ADDRSTRLEN];
+  for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+      if (ifa->ifa_addr->sa_family == AF_INET) {
           tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-          char addressBuffer[INET_ADDRSTRLEN];
           inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-          std::cout << "IP to " << (std::string) addressBuffer << std::endl;
       }
-  //}
+  }
   if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
+  return (std::string) addressBuffer;
 }
-
 
 void mDNS::ChangetoDnsNameFormat(unsigned char* dns, unsigned char* host) {
     unsigned int lock = 0;
@@ -287,6 +277,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
             translation[i-1] = '.';
         }
         translation[strlen((char*) query_)-1] = '.';
+        translation[strlen((char*) query_)] = '\0';
         std::cout << "OTRZYMANE PYTANIE TO " << translation << std::endl;
         switch (ntohs(query->type)) {
           case 12: //PTR
@@ -319,6 +310,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
             translation[i-1] = '.';
         }
         translation[strlen((char*) response)-1] = '.';
+        translation[strlen((char*) response)] = '\0';
         std::cout << "OTRZYMANA ODPOWIEDŹ TO " << translation << std::endl;
 
         switch (ntohs(record->rtype)) {

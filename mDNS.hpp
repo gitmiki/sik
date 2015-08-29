@@ -11,7 +11,7 @@ public:
       const boost::asio::ip::address& multicast_address,
       int interval
   );
-  void getIP();
+  std::string getIP();
   void prepare_PTR_query();
   void change_PTR_query_ID();
   void send_A_query(unsigned char* name);
