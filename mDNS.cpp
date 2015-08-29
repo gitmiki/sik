@@ -5,6 +5,12 @@
 #include <boost/asio.hpp>
 #include "boost/bind.hpp"
 
+#include <stdio.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 const short MULTICAST_PORT = 5353;
 const char* SERVICE_NAME = "_opoznienia._udp.local.";
 
@@ -43,15 +49,45 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   for (; i <= strlen(hostname) + strlen((char*) SERVICE_NAME); i++) {
     my_name[i] = SERVICE_NAME[i-strlen(hostname)-1];
   }
+
+  getIP();
   //my_name[i] = '\0';
   //std::cout<< "my_name = " << my_name << std::endl;
   //prepare_PTR_query();
   srand ( time(NULL) );
   prepare_PTR_query();
-  send_query();
+  send_PTR_query();
 
   receive();
 }
+
+void mDNS::getIP()
+{
+  struct ifaddrs * ifAddrStruct=NULL;
+  struct ifaddrs * ifa=NULL;
+  void * tmpAddrPtr=NULL;
+
+  getifaddrs(&ifAddrStruct);
+
+  ifa = ifAddrStruct;
+  ifa = ifa->ifa_next->ifa_next->ifa_next->ifa_next;
+  //int i = 0;
+  //for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+      //std::cout << "przejśce nr " << i++ << std::endl;
+      //if (!ifa->ifa_addr) {
+      //    continue;
+      //}
+      if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
+          // is a valid IP4 Address
+          tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+          char addressBuffer[INET_ADDRSTRLEN];
+          inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+          std::cout << "IP to " << (std::string) addressBuffer << std::endl;
+      }
+  //}
+  if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
+}
+
 
 void mDNS::ChangetoDnsNameFormat(unsigned char* dns, unsigned char* host) {
     unsigned int lock = 0;
@@ -88,18 +124,17 @@ void mDNS::handle_timeout(const boost::system::error_code& error)
   if (!error)
   {
     change_PTR_query_ID();
-    send_query();
+    send_PTR_query();
   }
 }
 
 void mDNS::prepare_PTR_query() {
   for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
-    query_buf[i] = '\0';
+    query_PTR_buf[i] = '\0';
   DNSHeader *header = NULL;
   DNSQuery *query = NULL;
-  header = (DNSHeader*)&query_buf;
+  header = (DNSHeader*)&query_PTR_buf;
   header->ID = htons (rand()%65537);
-  std::cout << "wylosowane ID to " << ntohs(header->ID) << std::endl;
   header->rd = 1;
   header->qr = 0;
   header->tc = 0;
@@ -114,10 +149,10 @@ void mDNS::prepare_PTR_query() {
   header->ancount = 0;
   header->nscount = 0;
   header->arcount = 0;
-  unsigned char *query_name = (unsigned char*)&query_buf[sizeof(DNSHeader)];
+  unsigned char *query_name = (unsigned char*)&query_PTR_buf[sizeof(DNSHeader)];
   unsigned char *DNSname = (unsigned char*) SERVICE_NAME;
   ChangetoDnsNameFormat(query_name, DNSname);
-  query = (DNSQuery*)&query_buf[sizeof(DNSHeader) + strlen((const char*) query_name)+1];
+  query = (DNSQuery*)&query_PTR_buf[sizeof(DNSHeader) + strlen((const char*) query_name)+1];
   query->type = htons(12); // PTR
   query->qclass = htons(1);
   query_buf_length = sizeof(DNSHeader) + strlen((const char*)query_name) + 1 + sizeof(DNSQuery);
@@ -126,13 +161,42 @@ void mDNS::prepare_PTR_query() {
 
 void mDNS::change_PTR_query_ID() {
   DNSHeader *header = NULL;
-  header = (DNSHeader*)&query_buf;
+  header = (DNSHeader*)&query_PTR_buf;
   header->ID = htons (rand()%65537);
   //std::cout << "wylosowane ID to " << ntohs(header->ID) << std::endl;
 }
 
-void mDNS::prepare_A_query() {
-
+void mDNS::send_A_query(unsigned char* name) {
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+    query_A_buf[i] = '\0';
+  DNSHeader *header = NULL;
+  DNSQuery *query = NULL;
+  header = (DNSHeader*)&query_A_buf;
+  header->ID = htons (rand()%65537);
+  header->rd = 1;
+  header->qr = 0;
+  header->tc = 0;
+  header->aa = 0;
+  header->opcode = 0;
+  header->rcode = 0;
+  header->cd = 0;
+  header->ad = 0;
+  header->z = 0;
+  header->ra = 0;
+  header->qdcount = htons(1);
+  header->ancount = 0;
+  header->nscount = 0;
+  header->arcount = 0;
+  unsigned char *query_name = (unsigned char*)&query_A_buf[sizeof(DNSHeader)];
+  //unsigned char *DNSname = (unsigned char*) SERVICE_NAME;
+  ChangetoDnsNameFormat(query_name, name);
+  query = (DNSQuery*)&query_A_buf[sizeof(DNSHeader) + strlen((const char*) query_name)+1];
+  query->type = htons(1); // A
+  query->qclass = htons(1);
+  query_buf_length = sizeof(DNSHeader) + strlen((const char*)query_name) + 1 + sizeof(DNSQuery);
+  socket_.send_to(
+      boost::asio::buffer(query_A_buf, sizeof(DNSHeader) + strlen((const char*) query_name) + 1 + sizeof(DNSQuery)), endpoint_
+      );
 }
 
 void mDNS::response_PTR(uint16_t ID) {
@@ -156,7 +220,7 @@ void mDNS::response_PTR(uint16_t ID) {
   header->ancount = htons(1);
   header->nscount = 0;
   header->arcount = 0;
-  //query_name = (unsigned char*)&query_buf[sizeof(DNSHeader)];
+  //query_name = (unsigned char*)&query_PTR_buf[sizeof(DNSHeader)];
   //unsigned char* tmp = (unsigned char*) my_name;
   //std::cout<< "my_name = " << my_name << std::endl;
   unsigned char* record_name = (unsigned char*)&response[sizeof(DNSHeader)];
@@ -181,9 +245,9 @@ void mDNS::prepare_A_response() {
 
 }
 
-void mDNS::send_query() {
+void mDNS::send_PTR_query() {
   socket_.async_send_to(
-      boost::asio::buffer(query_buf, query_buf_length), endpoint_,
+      boost::asio::buffer(query_PTR_buf, query_buf_length), endpoint_,
       boost::bind(&mDNS::handle_send_to, this,
         boost::asio::placeholders::error));
 }
@@ -241,7 +305,6 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
 
       }
       else { // response
-        std::cout << "ROZPOYCZNAMY CZYTANIE ODPOWIEDZI!!!!\n";
         RRecord *record = NULL;
         unsigned char* response;
         response = (unsigned char*)&answer[sizeof(DNSHeader)];
@@ -261,6 +324,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
         switch (ntohs(record->rtype)) {
           case 12: //PTR
             std::cout << " Otrzymano odpowiedź PTR \n";
+            send_A_query((unsigned char*) translation);
             break;
           case 1: //A
             std::cout << " Otrzymano odpowiedź A\n";
