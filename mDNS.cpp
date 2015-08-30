@@ -55,7 +55,6 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   }
 
   my_ip = getIP();
-  std::cout << "Moje IP to " << my_ip << std::endl;
   srand ( time(NULL) );
   prepare_PTR_query();
   send_PTR_query();
@@ -246,7 +245,6 @@ void mDNS::response_PTR(uint16_t ID) {
   int length = 0;
   DNSHeader *header = NULL;
   RRecord *record = NULL;
-  //DNSQuery *query = NULL;
   header = (DNSHeader*)&response_PTR_buf;
   length += sizeof(DNSHeader);
   header->ID = htons (ID);
@@ -268,8 +266,6 @@ void mDNS::response_PTR(uint16_t ID) {
   format_to_DNS(record_name, my_name);
   length += strlen((const char*) record_name) + 1;
   record = (RRecord*)&response_PTR_buf[length];
-  //std::cout << "LENGTH = " << length << std::endl;
-
   record->rtype = htons(12);
   record->rclass = htons(1);
   record->ttl = htons(10);
@@ -415,7 +411,8 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           response = (unsigned char*)&answer[length];
           length += strlen((const char*) response) + 1;
           char translation[strlen((char*) response)];
-          
+          std::string IP = "";
+          std::ostringstream convert;
           switch (ntohs(record->rtype)) {
             case 12: //PTR
               std::cout << " Otrzymano odpowiedź PTR \n";
@@ -434,6 +431,13 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               break;
             case 1: //A
               std::cout << " Otrzymano odpowiedź A\n";
+              for (uint i = 0; i < (strlen((char*) response)); i++) {
+                convert << (int) response[i];
+                if (i != (strlen((char*) response) - 1))
+                  convert << '.';
+              }
+              IP = convert.str();
+              std::cout << "IP to " << IP << std::endl;
               break;
             default: // ignorujemy
               std::cout << "cicho ignorujemy odpowiedź\n";
