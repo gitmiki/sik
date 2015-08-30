@@ -5,6 +5,8 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/asio/signal_set.hpp>
+#include <boost/thread.hpp>
 #include <thread>
 #include <string>
 #include <ctime>
@@ -13,13 +15,32 @@
 #include "udp_server.hpp"
 #include "udp_client.hpp"
 #include "tcp_client.hpp"
-//#include "mDNS_server.cpp"
 #include "mDNS.hpp"
 #include "config.hpp"
+#include "connection.hpp"
 
 using boost::asio::ip::udp;
 
+std::vector<Connection> connections;
+
 void set_options(int argc, char *argv[]);
+
+void write_connection(Connection c) {
+	std::cout << "IP = " << c.ip << std::endl;
+	std::cout << "active = " << c.active << std::endl;
+	std::cout << "pos = " << c.pos << std::endl;
+	std::cout << "opoznienia_ = " << c._opoznienia << std::endl;
+	std::cout << "ssh_ =" << c._ssh << std::endl;
+	std::cout << "udp  ssh  icmp" << std::endl;
+	for (int i = 0; i < 10; i++)
+		std::cout << c.udp[i] << "  " << c.ssh[i] << "  " << c.icmp[i] << std::endl;
+}
+
+void start_UDP_client() {
+	boost::asio::io_service io_service;
+	udp_client c(io_service, "192.168.1.103", std::to_string(UDP_PORT), FIND_INTERVAL);
+	//boost::thread thread1{[&io_service](){ io_service.run(); }};
+}
 
 int main(int argc, char *argv[]) {
 	set_options(argc, argv);
@@ -27,16 +48,21 @@ int main(int argc, char *argv[]) {
 	try
 	  {
 			boost::asio::io_service io_service;
-	    boost::asio::io_service io_service_server;
-	    boost::asio::io_service io_service_client;
+			//boost::asio::signal_set signals(io_service, SIGINT, SIGTERM);
+			//signals.async_wait(
+    	//boost::bind(&boost::asio::io_service::stop, &io_service));
 
 	    udp_server s(io_service, UDP_PORT);
 			std::thread thread1{[&io_service](){ io_service.run(); }};
-			udp_client c(io_service, "localhost", std::to_string(UDP_PORT));
-	    std::thread thread2{[&io_service](){ io_service.run(); }};
-			tcp_client c2(io_service, "localhost");
-	    std::thread thread3{[&io_service](){ io_service.run(); }};
 
+	    //std::thread thread2{[&io_service](){ io_service.run(); }};
+			//tcp_client c2(io_service, "localhost");
+	    //std::thread thread3{[&io_service](){ io_service.run(); }};
+						//udp_client c(io_service, "192.168.1.103", std::to_string(UDP_PORT), FIND_INTERVAL);
+						//std::thread thread2{[&io_service](){ io_service.run(); }};
+						//sleep(5);
+						//udp_client c2(io_service, "192.168.1.103", std::to_string(UDP_PORT), FIND_INTERVAL);
+						//std::thread thread3{[&io_service](){ io_service.run(); }};
 			mDNS Multicast(io_service,
 					boost::asio::ip::address::from_string("0.0.0.0"),
 					boost::asio::ip::address::from_string("224.0.0.251"),
@@ -45,13 +71,34 @@ int main(int argc, char *argv[]) {
 			);
 			std::thread thread4{[&io_service](){ io_service.run(); }};
 
+			//boost::thread_group threads;
+
+			boost::thread_group threads;
+			for (int i = 0; i < 10; ++i)
+					threads.create_thread(&start_UDP_client);
+			threads.join_all();
+
+			/*while (true) {
+				for(uint i=0; i < connections.size(); i++){
+					std::cout << i << "  ";
+					if (!connections[i].alive) {
+						threads.create_thread(&start_UDP_client);
+						//std::cout<<"HURAHRAURHAURHAURHAURHAURHAURHUARHAURHAURHUARHUARUARUARUARUARUARHUARHUARAURHAURHA\n\n\n\n";
+						connections[i].alive = true;
+					}
+					write_connection(connections[i]);
+				}
+				std::cout<<"Idę spać\n";
+				sleep(FIND_INTERVAL*3);
+			}*/
+
 			/*mDNS sMutlicast(io_service,
 					boost::asio::ip::address::from_string("224.0.0.251"));
 			std::thread thread5{[&io_service](){ io_service.run(); }};
 */
 			thread1.join();
-			thread2.join();
-			thread3.join();
+			//thread2.join();
+			//thread3.join();
 			thread4.join();
 			//thread5.join();
 

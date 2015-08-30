@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <boost/asio.hpp>
 #include <boost/algorithm/string.hpp>
+#include <thread>
 #include "boost/bind.hpp"
 
 #include <stdio.h>
@@ -17,6 +18,10 @@ const char* SERVICE_NAME = "_opoznienia._udp.local.";
 const char* SSH_QUERY = "_ssh._tcp.local.";
 
 #include "mDNS.hpp"
+#include "connection.hpp"
+#include "udp_client.hpp"
+
+extern std::vector<Connection> connections;
 
 mDNS::mDNS(boost::asio::io_service& io_service,
     const boost::asio::ip::address& listen_address,
@@ -353,10 +358,10 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
   {
     DNSHeader *header = NULL;
     header = (DNSHeader*)answer;
+    Connection c;
     int length = sizeof(DNSHeader);
     if (ntohs(header->tc) == 0) { // przyjmujemy tylko nie truncated
       if (ntohs(header->qr) == 0) {// query
-          std::cout << "LIczba pytań = " << ntohs(header->qdcount) << std::endl;
           for (int i = 0; i < ntohs(header->qdcount); i++) {
             DNSQuery *query = NULL;
             unsigned char* query_;
@@ -375,22 +380,22 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
             }
             translation[strlen((char*) query_)-1] = '.';
             translation[strlen((char*) query_)] = '\0';
-            std::cout << "OTRZYMANE PYTANIE TO " << translation << std::endl;
+            //std::cout << "OTRZYMANE PYTANIE TO " << translation << std::endl;
             switch (ntohs(query->type)) {
               case 12: //PTR
                 if (strcmp(translation, SERVICE_NAME) == 0) {
-                  std::cout << " Otrzymano zapytanie PTR \n";
+                  //std::cout << " Otrzymano zapytanie PTR \n";
                   response_PTR(ntohs(header->ID));
                 }
                 break;
               case 1: //A
                 if (strcmp(translation, (const char*) my_name) == 0) {
-                  std::cout << " Otrzymano zapytanie A\n";
+                  //std::cout << " Otrzymano zapytanie A\n";
                   response_A(ntohs(header->ID));
                 }
                 break;
               default: // ignorujemy
-                std::cout << "cicho ignorujemy zapytanie\n";
+                //std::cout << "cicho ignorujemy zapytanie\n";
                 break;
             }
           }
@@ -418,7 +423,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           std::ostringstream convert;
           switch (ntohs(record->rtype)) {
             case 12: //PTR
-              std::cout << " Otrzymano odpowiedź PTR \n";
+              //std::cout << " Otrzymano odpowiedź PTR \n";
               for (unsigned int i = 1; i < strlen((char*) response); i++) {
                 int x = (int) response[i];
                 if (x >= 32 && x <= 126) // check if printable
@@ -428,22 +433,46 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               }
               translation[strlen((char*) response)-1] = '.';
               translation[strlen((char*) response)] = '\0';
-              std::cout << "OTRZYMANA ODPOWIEDŹ TO " << translation << std::endl;
+              //std::cout << "OTRZYMANA ODPOWIEDŹ TO " << translation << std::endl;
 
               send_A_query((unsigned char*) translation);
               break;
             case 1: //A
-              std::cout << " Otrzymano odpowiedź A\n";
+              //std::cout << " Otrzymano odpowiedź A\n";
               for (uint i = 0; i < (strlen((char*) response)); i++) {
                 convert << (int) response[i];
                 if (i != (strlen((char*) response) - 1))
                   convert << '.';
               }
               IP = convert.str();
-              std::cout << "IP to " << IP << std::endl;
+              //std::cout << "IP to " << IP << std::endl;
+              uint i;
+              for(i = 0; i < connections.size(); i++) {
+                if (connections[i].ip.compare(IP) == 0) {
+                  connections[i].active = 12;
+                  connections[i]._opoznienia = true;
+                }
+                break;
+              }
+              if (i == connections.size()) {
+                c.ip = IP;
+                c.active = 12;
+                c.alive = false;
+                c._opoznienia = true;
+                c._ssh = false;
+                c.pos = 0;
+                for (int i = 0; i < 10; i++) {
+                  c.udp[i] = 0; c.ssh[i] = 0; c.icmp[i] = 0;
+                }
+                connections.push_back(c);
+                //boost::asio::io_service io_service;
+                //std::cout << "odpalam udp_client\n";
+                //udp_client c(io_service, "192.168.1.103", std::to_string(3382), 1);
+    						//std::thread thread2{[&io_service](){ io_service.run(); }};
+              }
               break;
             default: // ignorujemy
-              std::cout << "cicho ignorujemy odpowiedź\n";
+              //std::cout << "cicho ignorujemy odpowiedź\n";
               break;
           }
         }

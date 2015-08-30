@@ -24,8 +24,6 @@ void udp_server::handle_receive_from(const boost::system::error_code& error,
   gettimeofday(&tv,NULL);
   boost::uint64_t b = 1000000 * tv.tv_sec + tv.tv_usec;
   answer[1] = htobe64(b);
-  //if (DEBUG)
-    std::cout << "SERVER: Sending back time " << b << std::endl;
   if (!error && bytes_recvd > 0)
   {
     socket_.async_send_to(
