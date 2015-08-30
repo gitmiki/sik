@@ -30,3 +30,7 @@ typedef struct RRecord {
   uint16_t rdlength;
   //unsigned char *rdata; ///
 } RRecord;
+
+typedef struct IPRecord {
+  uint8_t field[4];
+} IPRecord;

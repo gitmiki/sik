@@ -18,7 +18,7 @@ public:
   void send_A_query(unsigned char* name);
   void response_PTR(uint16_t ID);
   void response_A(uint16_t ID);
-  void ChangetoDnsNameFormat(unsigned char* dns, unsigned char* host);
+  void format_to_DNS(unsigned char* dns, unsigned char* host);
   void handle_send_to(const boost::system::error_code& error);
   void send_PTR_query();
   void receive();
