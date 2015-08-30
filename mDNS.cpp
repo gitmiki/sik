@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <cstdlib>
 #include <boost/asio.hpp>
+#include <boost/algorithm/string.hpp>
 #include "boost/bind.hpp"
 
 #include <stdio.h>
@@ -13,19 +14,22 @@
 
 const short MULTICAST_PORT = 5353;
 const char* SERVICE_NAME = "_opoznienia._udp.local.";
+const char* SSH_QUERY = "_ssh._tcp.local.";
 
 #include "mDNS.hpp"
 
 mDNS::mDNS(boost::asio::io_service& io_service,
     const boost::asio::ip::address& listen_address,
     const boost::asio::ip::address& multicast_address,
-    int interval
+    int interval,
+    bool DNS_SD
   )
   : socket_(io_service),
     endpoint_(multicast_address, 5353),
     timer_(io_service),
     message_count_(0),
-    interval_(interval)
+    interval_(interval),
+    DNS_SD(DNS_SD)
 {
   // Create the socket so that multiple may be bound to the same address.
   boost::asio::ip::udp::endpoint listen_endpoint(
@@ -50,7 +54,8 @@ mDNS::mDNS(boost::asio::io_service& io_service,
     my_name[i] = SERVICE_NAME[i-strlen(hostname)-1];
   }
 
-  std::cout << "Moje IP to " << getIP() << std::endl;
+  my_ip = getIP();
+  std::cout << "Moje IP to " << my_ip << std::endl;
   srand ( time(NULL) );
   prepare_PTR_query();
   send_PTR_query();
@@ -70,44 +75,52 @@ std::string mDNS::getIP()
       exit(1);
   }
 
-  //for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
-  //{
+  // ALTERNATYWNA WERSJA DO LABÓW ZAMIAST CAŁEGO PONIŻSZEGO IFa
+
+  /*
   ifa = myaddrs;
   ifa = ifa->ifa_next->ifa_next->ifa_next->ifa_next;
-      //if (ifa->ifa_addr == NULL)
-      //    continue;
-      //if (!(ifa->ifa_flags & IFF_UP))
-      //    continue;
+  struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+  in_addr = &s4->sin_addr;
+  if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
+  {
+      printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+  }
+  */
 
-      //switch (ifa->ifa_addr->sa_family)
-      //{
-          //case AF_INET:
-          //{
-              struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
-              in_addr = &s4->sin_addr;
-              //break;
-          //}
-          //default:
-          //    continue;
-      //}
+  for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
+  {
+    if (ifa->ifa_addr == NULL)
+      continue;
+    if (!(ifa->ifa_flags & IFF_UP))
+      continue;
+
+    switch (ifa->ifa_addr->sa_family)
+    {
+      case AF_INET:
+      {
+        struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+        in_addr = &s4->sin_addr;
+        break;
+      }
+      default:
+        continue;
+      }
 
       if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
       {
           printf("%s: inet_ntop failed!\n", ifa->ifa_name);
       }
-  //}
+  }
 
   freeifaddrs(myaddrs);
   return std::string(buf);
 }
 
-
 void mDNS::ChangetoDnsNameFormat(unsigned char* dns, unsigned char* host) {
     unsigned int lock = 0;
-    for(unsigned int i = 0 ; i < strlen((char*)host) ; i++)
-    {
-        if(host[i]=='.')
-        {
+    for(unsigned int i = 0 ; i < strlen((char*)host) ; i++) {
+        if(host[i]=='.') {
             *dns++ = i-lock;
             for(;lock<i;lock++)
             {
@@ -118,7 +131,6 @@ void mDNS::ChangetoDnsNameFormat(unsigned char* dns, unsigned char* host) {
     }
     *dns++='\0';
 }
-
 
 void mDNS::handle_send_to(const boost::system::error_code& error)
 {
@@ -146,7 +158,9 @@ void mDNS::prepare_PTR_query() {
     query_PTR_buf[i] = '\0';
   DNSHeader *header = NULL;
   DNSQuery *query = NULL;
+  int length = 0;
   header = (DNSHeader*)&query_PTR_buf;
+  length += sizeof(DNSHeader);
   header->ID = htons (rand()%65537);
   header->rd = 1;
   header->qr = 0;
@@ -158,25 +172,39 @@ void mDNS::prepare_PTR_query() {
   header->ad = 0;
   header->z = 0;
   header->ra = 0;
-  header->qdcount = htons(1);
+  if (DNS_SD)
+    header->qdcount = htons(2);
+  else
+    header->qdcount = htons(1);
   header->ancount = 0;
   header->nscount = 0;
   header->arcount = 0;
-  unsigned char *query_name = (unsigned char*)&query_PTR_buf[sizeof(DNSHeader)];
+  unsigned char *query_name = (unsigned char*)&query_PTR_buf[length];
   unsigned char *DNSname = (unsigned char*) SERVICE_NAME;
   ChangetoDnsNameFormat(query_name, DNSname);
-  query = (DNSQuery*)&query_PTR_buf[sizeof(DNSHeader) + strlen((const char*) query_name)+1];
+  length += strlen((const char*) query_name) + 1;
+  query = (DNSQuery*)&query_PTR_buf[length];
+  length += sizeof(DNSQuery);
   query->type = htons(12); // PTR
   query->qclass = htons(1);
-  query_buf_length = sizeof(DNSHeader) + strlen((const char*)query_name) + 1 + sizeof(DNSQuery);
-  std::cout << "Wartość header->qr przed wysłaniem to " << ntohl(header->qr) << std::endl;
+  if (DNS_SD) {
+    DNSQuery *ssh_query;
+    unsigned char *ssh_query_name = (unsigned char*)&query_PTR_buf[length];
+    unsigned char *ssh_DNSname = (unsigned char*) SSH_QUERY;
+    ChangetoDnsNameFormat(ssh_query_name, ssh_DNSname);
+    length += strlen((const char*) ssh_query_name) + 1;
+    ssh_query = (DNSQuery*)&query_PTR_buf[length];
+    length += sizeof(DNSQuery);
+    ssh_query->type = htons(1); //A
+    ssh_query->qclass = htons(1);
+  }
+  query_buf_length = length;
 }
 
 void mDNS::change_PTR_query_ID() {
   DNSHeader *header = NULL;
   header = (DNSHeader*)&query_PTR_buf;
-  header->ID = htons (rand()%65537);
-  //std::cout << "wylosowane ID to " << ntohs(header->ID) << std::endl;
+  header->ID = htons (rand()%65537);;
 }
 
 void mDNS::send_A_query(unsigned char* name) {
@@ -214,10 +242,13 @@ void mDNS::send_A_query(unsigned char* name) {
 
 void mDNS::response_PTR(uint16_t ID) {
   for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
-    response[i] = '\0';
+    response_PTR_buf[i] = '\0';
+  int length = 0;
   DNSHeader *header = NULL;
   RRecord *record = NULL;
-  header = (DNSHeader*)&response;
+  //DNSQuery *query = NULL;
+  header = (DNSHeader*)&response_PTR_buf;
+  length += sizeof(DNSHeader);
   header->ID = htons (ID);
   header->rd = 1;
   header->qr = 1;
@@ -226,36 +257,97 @@ void mDNS::response_PTR(uint16_t ID) {
   header->opcode = 0;
   header->rcode = 0;
   header->cd = 0;
-  header->ad = 0;
+  header->ad = 1;
   header->z = 0;
   header->ra = 0;
-  header->qdcount = htons(1);
+  header->qdcount = 0;
   header->ancount = htons(1);
   header->nscount = 0;
   header->arcount = 0;
-  //query_name = (unsigned char*)&query_PTR_buf[sizeof(DNSHeader)];
-  //unsigned char* tmp = (unsigned char*) my_name;
-  //std::cout<< "my_name = " << my_name << std::endl;
-  unsigned char* record_name = (unsigned char*)&response[sizeof(DNSHeader)];
-  //unsigned char *DNSname = (unsigned char*) my_name;
+  unsigned char* record_name = (unsigned char*)&response_PTR_buf[length];
   ChangetoDnsNameFormat(record_name, my_name);
+  length += strlen((const char*) record_name) + 1;
+  record = (RRecord*)&response_PTR_buf[length];
+  //std::cout << "LENGTH = " << length << std::endl;
 
-  record = (RRecord*)&response[sizeof(DNSHeader) + strlen((const char*) record_name)+1];
   record->rtype = htons(12);
   record->rclass = htons(1);
-  record->ttl = htons(10);
-  record->rdlength = htons(strlen((const char*) record_name));
-  unsigned char* record_rdata = (unsigned char*)&response[sizeof(DNSHeader) + strlen((const char*) record_name)+1 + sizeof(RRecord)];
-  //unsigned char *DNSname = (unsigned char*) my_name;
+  record->ttl = htonl(10);
+  length += sizeof(RRecord);
+  unsigned char* record_rdata = (unsigned char*)&response_PTR_buf[length];
   ChangetoDnsNameFormat(record_rdata, my_name);
+  length += strlen((const char*) record_rdata) + 1;
 
+  record->rdlength = htons(strlen((const char*) record_rdata));
   socket_.send_to(
-      boost::asio::buffer(response, sizeof(DNSHeader) + strlen((const char*) record_name) + 1 + sizeof(RRecord) + strlen((const char*) record_rdata + 1)), endpoint_
+      boost::asio::buffer(response_PTR_buf, length), endpoint_
       );
 }
 
-void mDNS::prepare_A_response() {
-
+void mDNS::response_A(uint16_t ID) {
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+    response_A_buf[i] = '\0';
+  int length = 0;
+  DNSHeader *header = NULL;
+  RRecord *record = NULL;
+  header = (DNSHeader*)&response_A_buf;
+  length += sizeof(DNSHeader);
+  header->ID = htons (ID);
+  header->rd = 1;
+  header->qr = 1;
+  header->tc = 0;
+  header->aa = 1;
+  header->opcode = 0;
+  header->rcode = 0;
+  header->cd = 0;
+  header->ad = 1;
+  header->z = 0;
+  header->ra = 0;
+  header->qdcount = 0;
+  header->ancount = htons(1);
+  header->nscount = 0;
+  header->arcount = 0;
+  unsigned char *IP;
+  IP = (unsigned char *)my_ip.c_str();
+  unsigned char* record_name = (unsigned char*)&response_A_buf[length];
+  ChangetoDnsNameFormat(record_name, my_name);
+  length += strlen((const char*) record_name) + 1;
+  record = (RRecord*)&response_A_buf[length];
+  length += sizeof(RRecord);
+  record->rtype = htons(1);
+  record->rclass = htons(1);
+  record->ttl = htonl(10);
+  length += sizeof(RRecord);
+  std::vector<std::string> strs;
+  boost::split(strs, my_ip, boost::is_any_of("."));
+  for (unsigned int i = 0; i < strs.size(); i++) {
+    uint8_t tmp = (uint8_t) atoi(strs[i].c_str());
+    std::cout << "Liczba to " << tmp << std::endl;
+    response_A_buf[length] = tmp;
+    length += sizeof(uint8_t);
+  }
+  //uint32_t converted_IP;// = NULL;
+  //(uint32_t*)&response_A_buf = converted_IP;
+  //converted_IP = (uint32_t*)&response_A_buf;
+  //*converted_IP = 1223;
+  //converted_IP = inet_addr((const char*) IP);
+  //converted_IP = tmp;
+  //converted_IP = htonl(tmp);
+  //unsigned int IP_converted = inet_addr((const char*)IP);
+  //std::cout << IP2 << " = " << inet_ntop(IP2) << std::endl;
+  //unsigned char* record_rdata = (unsigned char*)&response_A_buf[length];
+  //ChangetoDnsNameFormat(record_rdata, IP);
+  //uint16_t *pierwszy = NULL;
+  //pierwszy = (uint8_t*)&response_A_buf;// = 192;
+  //short x = htons(192);
+  //*pierwszy = (uint8_t) x;
+  //response_A_buf[length]
+  //length += strlen((const char*) record_rdata) + 1;
+  //length += sizeof(uint32_t);
+  record->rdlength = htons(sizeof(uint32_t));//htons(strlen((const char*) record_rdata));
+  socket_.send_to(
+      boost::asio::buffer(response_A_buf, length), endpoint_
+      );
 }
 
 void mDNS::send_PTR_query() {
@@ -284,69 +376,92 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
   {
     DNSHeader *header = NULL;
     header = (DNSHeader*)answer;
+    int length = sizeof(DNSHeader);
     if (ntohs(header->tc) == 0) { // przyjmujemy tylko nie truncated
       if (ntohs(header->qr) == 0) {// query
-        DNSQuery *query = NULL;
-        unsigned char* query_;
-        query_ = (unsigned char*)&answer[sizeof(DNSHeader)];
-        query = (DNSQuery*)&answer[sizeof(DNSHeader) + strlen((const char*) query_) + 1];
-        char translation[strlen((char*) query_)];
-        for (unsigned int i = 1; i < strlen((char*) query_); i++) {
-          int x = (int) query_[i];
-          //std::cout<< x << " ";
-          if (x >= 32 && x <= 126) // check if printable
-            translation[i-1] = static_cast<char>(x);//(char) std::to_string(x).c_str();
-          else
-            translation[i-1] = '.';
-        }
-        translation[strlen((char*) query_)-1] = '.';
-        translation[strlen((char*) query_)] = '\0';
-        std::cout << "OTRZYMANE PYTANIE TO " << translation << std::endl;
-        switch (ntohs(query->type)) {
-          case 12: //PTR
-            if (strcmp(translation, SERVICE_NAME) == 0) {
-              std::cout << " Otrzymano zapytanie PTR \n";
-              response_PTR(ntohs(header->ID));
+          std::cout << "LIczba pytań = " << ntohs(header->qdcount) << std::endl;
+          for (int i = 0; i < ntohs(header->qdcount); i++) {
+            DNSQuery *query = NULL;
+            unsigned char* query_;
+            query_ = (unsigned char*)&answer[length];
+            length += strlen((const char*) query_) + 1;
+            query = (DNSQuery*)&answer[length];
+            length += sizeof(DNSQuery);
+            char translation[strlen((char*) query_)];
+            for (unsigned int i = 1; i < strlen((char*) query_); i++) {
+              int x = (int) query_[i];
+              //std::cout<< x << " ";
+              if (x >= 32 && x <= 126) // check if printable
+                translation[i-1] = static_cast<char>(x);//(char) std::to_string(x).c_str();
+              else
+                translation[i-1] = '.';
             }
-            break;
-          case 1: //A
-            std::cout << " Otrzymano zapytanie A\n";
-            break;
-          default: // ignorujemy
-            std::cout << "cicho ignorujemy zapytanie\n";
-            break;
-        }
-
+            translation[strlen((char*) query_)-1] = '.';
+            translation[strlen((char*) query_)] = '\0';
+            std::cout << "OTRZYMANE PYTANIE TO " << translation << std::endl;
+            switch (ntohs(query->type)) {
+              case 12: //PTR
+                if (strcmp(translation, SERVICE_NAME) == 0) {
+                  std::cout << " Otrzymano zapytanie PTR \n";
+                  response_PTR(ntohs(header->ID));
+                }
+                break;
+              case 1: //A
+                if (strcmp(translation, (const char*) my_name) == 0) {
+                  std::cout << " Otrzymano zapytanie A\n";
+                  response_A(ntohs(header->ID));
+                }
+                break;
+              default: // ignorujemy
+                std::cout << "cicho ignorujemy zapytanie\n";
+                break;
+            }
+          }
       }
       else { // response
-        RRecord *record = NULL;
-        unsigned char* response;
-        response = (unsigned char*)&answer[sizeof(DNSHeader)];
-        record = (RRecord*)&answer[sizeof(DNSHeader) + strlen((const char*) response) + 1];
-        char translation[strlen((char*) response)];
-        for (unsigned int i = 1; i < strlen((char*) response); i++) {
-          int x = (int) response[i];
-          //std::cout<< x << " ";
-          if (x >= 32 && x <= 126) // check if printable
-            translation[i-1] = static_cast<char>(x);//(char) std::to_string(x).c_str();
-          else
-            translation[i-1] = '.';
+        // Omijamy pytania jeśli są
+        for (int i = 0; i < ntohs(header->qdcount); i++) { std::cout << "BLABLBAL ZLE \n";
+          unsigned char* query_;
+          query_ = (unsigned char*)&answer[length];
+          length += strlen((const char*) query_) + 1 + sizeof(DNSQuery);
         }
-        translation[strlen((char*) response)-1] = '.';
-        translation[strlen((char*) response)] = '\0';
-        std::cout << "OTRZYMANA ODPOWIEDŹ TO " << translation << std::endl;
 
-        switch (ntohs(record->rtype)) {
-          case 12: //PTR
-            std::cout << " Otrzymano odpowiedź PTR \n";
-            send_A_query((unsigned char*) translation);
-            break;
-          case 1: //A
-            std::cout << " Otrzymano odpowiedź A\n";
-            break;
-          default: // ignorujemy
-            std::cout << "cicho ignorujemy odpowiedź\n";
-            break;
+        for (int i = 0; i < ntohs(header->ancount); i++) {
+          RRecord *record = NULL;
+          unsigned char* domain_name;
+          domain_name = (unsigned char*)&answer[length];
+          length += strlen((const char*) domain_name) + 1;
+          record = (RRecord*)&answer[length];
+          length += sizeof(RRecord);
+
+          unsigned char* response;
+          response = (unsigned char*)&answer[length];
+          length += strlen((const char*) response) + 1;
+          std::cout << "length " << length << std::endl;
+          char translation[strlen((char*) domain_name)];
+          for (unsigned int i = 1; i < strlen((char*) domain_name); i++) {
+            int x = (int) domain_name[i];
+            if (x >= 32 && x <= 126) // check if printable
+              translation[i-1] = static_cast<char>(x);
+            else
+              translation[i-1] = '.';
+          }
+          translation[strlen((char*) domain_name)-1] = '.';
+          translation[strlen((char*) domain_name)] = '\0';
+          std::cout << "OTRZYMANA ODPOWIEDŹ TO " << translation << std::endl;
+
+          switch (ntohs(record->rtype)) {
+            case 12: //PTR
+              std::cout << " Otrzymano odpowiedź PTR \n";
+              send_A_query((unsigned char*) translation);
+              break;
+            case 1: //A
+              std::cout << " Otrzymano odpowiedź A\n";
+              break;
+            default: // ignorujemy
+              std::cout << "cicho ignorujemy odpowiedź\n";
+              break;
+          }
         }
       }
     }

@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
 			mDNS Multicast(io_service,
 					boost::asio::ip::address::from_string("0.0.0.0"),
 					boost::asio::ip::address::from_string("224.0.0.251"),
-					SERVICES_INTERVAL
+					SERVICES_INTERVAL,
+					DNS_SD
 			);
 			std::thread thread4{[&io_service](){ io_service.run(); }};
 

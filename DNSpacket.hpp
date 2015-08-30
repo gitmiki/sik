@@ -23,18 +23,10 @@ typedef struct DNSQuery {
 } DNSQuery;
 
 typedef struct RRecord {
-  //unsigned char *name; /// /??????????? jak ityp ???????
+  //unsigned char *name; ///
   uint16_t rtype;
   uint16_t rclass;
-  uint16_t ttl;
+  uint32_t ttl;
   uint16_t rdlength;
-  //unsigned char *rdata; //// ???????????????? jaki typ??? ?///////
+  //unsigned char *rdata; ///
 } RRecord;
-
-typedef struct DNSpacket {
-  DNSHeader header;
-  DNSQuery query;
-  RRecord *answer;
-  RRecord *authority;
-  RRecord *additional;
-} DNSpacket;
