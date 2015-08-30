@@ -45,7 +45,10 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   char hostname[64];
   gethostname(hostname, 64);
   //unsigned char tmp[strlen(hostname)+strlen((char*) SERVICE_NAME)+1];
+
   unsigned int i = 0;
+  for (uint i = 0; i < 128; i++)
+    my_name[i] = '\0';
   for (; i < strlen(hostname); i++) {
     my_name[i] = hostname[i];
   }
