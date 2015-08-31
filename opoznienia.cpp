@@ -15,6 +15,7 @@
 #include "udp_server.hpp"
 #include "udp_client.hpp"
 #include "tcp_client.hpp"
+#include "icmp_client.hpp"
 #include "mDNS.hpp"
 #include "config.hpp"
 #include "connection.hpp"
@@ -61,6 +62,7 @@ int main(int argc, char *argv[]) {
 	Connection con;
 	con.udp_credits = 12;
 	con.tcp_credits = 12;
+	con.icmp_credits = 12;
 	con.alive = true;
 	con._opoznienia = true;
 	con._ssh = true;
@@ -86,9 +88,6 @@ int main(int argc, char *argv[]) {
 	try
 	  {
 			boost::asio::io_service io_service;
-			//boost::asio::signal_set signals(io_service, SIGINT, SIGTERM);
-			//signals.async_wait(
-    	//boost::bind(&boost::asio::io_service::stop, &io_service));
 
 	    udp_server s(io_service, UDP_PORT);
 			std::thread thread1{[&io_service](){ io_service.run(); }};
@@ -96,41 +95,30 @@ int main(int argc, char *argv[]) {
 	    std::thread thread2{[&io_service](){ io_service.run(); }};
 			tcp_client c2(io_service, FIND_INTERVAL);
 			std::thread thread3{[&io_service](){ io_service.run(); }};
+			icmp_client c3(io_service, FIND_INTERVAL);
+			std::thread thread4{[&io_service](){ io_service.run(); }};
 
-			std::cout<<"MULTICAST START!"<<std::endl;
 			mDNS Multicast(io_service,
 					boost::asio::ip::address::from_string("0.0.0.0"),
 					boost::asio::ip::address::from_string("224.0.0.251"),
 					SERVICES_INTERVAL,
 					DNS_SD
 			);
-			std::thread thread4{[&io_service](){ io_service.run(); }};
-	    //std::thread thread3{[&io_service](){ io_service.run(); }};
-						//udp_client c(io_service, "192.168.1.103", std::to_string(UDP_PORT), FIND_INTERVAL);
-						//std::thread thread2{[&io_service](){ io_service.run(); }};
-						//sleep(5);
-						//udp_client c2(io_service, "192.168.1.103", std::to_string(UDP_PORT), FIND_INTERVAL);
-						//std::thread thread3{[&io_service](){ io_service.run(); }};
-
-			//boost::thread_group threads;
+			std::thread thread5{[&io_service](){ io_service.run(); }};
 
 			while (true) {
 				for(uint i=0; i < connections.size(); i++){
 					write_connection(connections[i]);
 				}
-				std::cout<<"Idę spać, w vectorze mamy " << connections.size() << " rekordów\n";
-				sleep(FIND_INTERVAL);
+				std::cout<<"sleeping, " << connections.size() << " records in vector\n";
+				sleep(REFRESH_TIME);
 			}
 
-			/*mDNS sMutlicast(io_service,
-					boost::asio::ip::address::from_string("224.0.0.251"));
-			std::thread thread5{[&io_service](){ io_service.run(); }};
-*/
 			thread1.join();
-			//thread2.join();
-			//thread3.join();
+			thread2.join();
+			thread3.join();
 			thread4.join();
-			//thread5.join();
+			thread5.join();
 
 	  }
 	  catch (std::exception& e)

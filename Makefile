@@ -7,11 +7,11 @@ TARGETS = opoznienia
 
 all: $(TARGETS)
 
-opoznienia: opoznienia.o udp_server.o udp_client.o tcp_client.o mDNS.o err.o
+opoznienia: opoznienia.o udp_server.o udp_client.o tcp_client.o icmp_client.o mDNS.o err.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f opoznienia client *.o *~ *.bak
+	rm -f opoznienia *.o *~ *.bak

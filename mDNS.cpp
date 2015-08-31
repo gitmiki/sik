@@ -53,8 +53,6 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   gethostname(hostname, 64);
   //unsigned char tmp[strlen(hostname)+strlen((char*) SERVICE_NAME)+1];
 
-
-
   unsigned int i = 0;
   for (uint i = 0; i < 128; i++) {
     my_name[i] = '\0';
@@ -75,9 +73,9 @@ mDNS::mDNS(boost::asio::io_service& io_service,
     ssh_service_name[j] = SSH_SERVICE[j-strlen(hostname)-1];
   }
 
-  std::cout << "MY_NAME = " << my_name << std::endl;
+  //std::cout << "MY_NAME = " << my_name << std::endl;
 
-  std::cout << "SSH_SERVICE_NAME = " << ssh_service_name << std::endl;
+  //std::cout << "SSH_SERVICE_NAME = " << ssh_service_name << std::endl;
 
 
   my_ip = getIP();
@@ -140,7 +138,6 @@ std::string mDNS::getIP()
           printf("%s: inet_ntop failed!\n", ifa->ifa_name);
       }
   }
-
   freeifaddrs(myaddrs);
   return std::string(buf);
 }
@@ -160,7 +157,7 @@ void mDNS::format_to_DNS(unsigned char* dns, unsigned char* host) {
 
 void mDNS::handle_send_to(const boost::system::error_code& error)
 {
-  std::cout << "WYSŁANE!!!\n";
+  //std::cout << "WYSŁANE!!!\n";
   if (!error)
   {
     timer_.expires_from_now(boost::posix_time::seconds(interval_));
