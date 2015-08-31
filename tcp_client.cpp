@@ -47,8 +47,8 @@ void tcp_client::connect(const std::string& host) {
   boost::posix_time::ptime t2 = boost::posix_time::microsec_clock::local_time();
   socket_.close();
   boost::posix_time::time_duration msdiff = t2 - t1;
-  std::cout << "Połączenie się za pomocą TCP z " << host << " zajmuje " << msdiff.total_microseconds() << " mikrosekund" << std::endl;
-  std::cout << "Connected!" << std::endl;
+  //std::cout << "Połączenie się za pomocą TCP z " << host << " zajmuje " << msdiff.total_microseconds() << " mikrosekund" << std::endl;
+  //std::cout << "Connected!" << std::endl;
   for(uint i = 0; i < connections.size(); i++) {
     if (connections[i].ip.compare(host) == 0) {
       connections[i].ssh[connections[i].pos_tcp] = (int) msdiff.total_microseconds();

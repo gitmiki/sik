@@ -26,15 +26,33 @@ std::vector<Connection> connections;
 void set_options(int argc, char *argv[]);
 
 void write_connection(Connection c) {
+	int udp_av = 0, ssh_av = 0, icmp_av = 0;
 	std::cout << "IP = " << c.ip << std::endl;
-	std::cout << "udp_credits = " << c.udp_credits << std::endl;
-	std::cout << "tcp_credits = " << c.tcp_credits << std::endl;
-	std::cout << "pos = " << c.pos_udp << std::endl;
-	std::cout << "opoznienia_ = " << c._opoznienia << std::endl;
-	std::cout << "ssh_ =" << c._ssh << std::endl;
 	std::cout << "udp  ssh  icmp" << std::endl;
 	for (int i = 0; i < 10; i++)
 		std::cout << c.udp[i] << "  " << c.ssh[i] << "  " << c.icmp[i] << std::endl;
+	int sum_udp = 0, count_udp = 0, sum_ssh = 0, count_ssh = 0, sum_icmp = 0, count_icmp = 0;
+	for (int i = 0; i < 10; i++) {
+		if (c.udp[i] != 0) {
+			sum_udp += c.udp[i];
+			count_udp++;
+		}
+		if (c.ssh[i] != 0) {
+			sum_ssh += c.ssh[i];
+			count_ssh++;
+		}
+		if (c.icmp[i] != 0) {
+			sum_icmp += c.icmp[i];
+			count_icmp++;
+		}
+	}
+	if (count_udp != 0)
+		udp_av = sum_udp / count_udp;
+	if (count_ssh != 0)
+		ssh_av = sum_ssh / count_ssh;
+	if (count_icmp != 0)
+		icmp_av = sum_icmp / count_icmp;
+	std::cout << "AVERAGE:" << std::endl << udp_av << " " << ssh_av << " " << icmp_av << "\n\n";
 }
 
 int main(int argc, char *argv[]) {
@@ -100,7 +118,7 @@ int main(int argc, char *argv[]) {
 				for(uint i=0; i < connections.size(); i++){
 					write_connection(connections[i]);
 				}
-				std::cout<<"Idę spać\n";
+				std::cout<<"Idę spać, w vectorze mamy " << connections.size() << " rekordów\n";
 				sleep(FIND_INTERVAL);
 			}
 

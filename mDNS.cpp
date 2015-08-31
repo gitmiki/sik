@@ -15,7 +15,9 @@
 
 const short MULTICAST_PORT = 5353;
 const char* SERVICE_NAME = "_opoznienia._udp.local.";
-const char* SSH_QUERY = "_ssh._tcp.local.";
+const char* SSH_SERVICE = "_ssh._tcp.local.";
+
+#define CREDITS_RATE 12;
 
 #include "mDNS.hpp"
 #include "connection.hpp"
@@ -51,21 +53,40 @@ mDNS::mDNS(boost::asio::io_service& io_service,
   gethostname(hostname, 64);
   //unsigned char tmp[strlen(hostname)+strlen((char*) SERVICE_NAME)+1];
 
+
+
   unsigned int i = 0;
-  for (uint i = 0; i < 128; i++)
+  for (uint i = 0; i < 128; i++) {
     my_name[i] = '\0';
+    ssh_service_name[i] = '\0';
+  }
   for (; i < strlen(hostname); i++) {
     my_name[i] = hostname[i];
+    ssh_service_name[i] = hostname[i];
   }
+  uint j = i;
   my_name[i++] = '.';
+  ssh_service_name[j++] = '.';
+
   for (; i <= strlen(hostname) + strlen((char*) SERVICE_NAME); i++) {
     my_name[i] = SERVICE_NAME[i-strlen(hostname)-1];
   }
+  for (; j <= strlen(hostname) + strlen((char*) SSH_SERVICE); j++) {
+    ssh_service_name[j] = SSH_SERVICE[j-strlen(hostname)-1];
+  }
+
+  std::cout << "MY_NAME = " << my_name << std::endl;
+
+  std::cout << "SSH_SERVICE_NAME = " << ssh_service_name << std::endl;
+
 
   my_ip = getIP();
   srand ( time(NULL) );
   prepare_PTR_query();
   send_PTR_query();
+  if (DNS_SD) {
+    broadcast_SSH();
+  }
 
   receive();
 }
@@ -130,9 +151,7 @@ void mDNS::format_to_DNS(unsigned char* dns, unsigned char* host) {
         if(host[i]=='.') {
             *dns++ = i-lock;
             for(;lock<i;lock++)
-            {
                 *dns++=host[lock];
-            }
             lock++;
         }
     }
@@ -157,11 +176,58 @@ void mDNS::handle_timeout(const boost::system::error_code& error)
   {
     change_PTR_query_ID();
     send_PTR_query();
+    if (DNS_SD) {
+      broadcast_SSH();
+    }
   }
 }
 
+void mDNS::broadcast_SSH() {
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + MAX_BUFFER_SIZE + sizeof(DNSQuery); i++) // czyścimy buffer
+    ssh_broadcast_buffer[i] = '\0';
+  int length = 0;
+  DNSHeader *header = NULL;
+  RRecord *record = NULL;
+  header = (DNSHeader*)&ssh_broadcast_buffer;
+  length += sizeof(DNSHeader);
+  header->ID = 0;
+  header->rd = 1;
+  header->qr = 1;
+  header->tc = 0;
+  header->aa = 1;
+  header->opcode = 0;
+  header->rcode = 0;
+  header->cd = 0;
+  header->ad = 1;
+  header->z = 0;
+  header->ra = 0;
+  header->qdcount = 0;
+  header->ancount = htons(1);
+  header->nscount = 0;
+  header->arcount = 0;
+  unsigned char* record_name = (unsigned char*)&ssh_broadcast_buffer[length];
+  format_to_DNS(record_name, ssh_service_name);
+  length += strlen((const char*) record_name) + 1;
+  record = (RRecord*)&ssh_broadcast_buffer[length];
+  record->rtype = htons(1);
+  record->rclass = htons(1);
+  record->ttl = htonl(10);
+  record->rdlength = htons(sizeof(uint32_t));//htons(strlen((const char*) record_rdata));
+  length += sizeof(RRecord) - sizeof(uint16_t);
+  std::vector<std::string> strs;
+  boost::split(strs, my_ip, boost::is_any_of("."));
+  IPRecord *ip = NULL;
+  ip = (IPRecord*)&ssh_broadcast_buffer[length];
+  for (unsigned int i = 0; (i < strs.size()) or (i < 4); i++)
+    ip->field[i] = (uint8_t) atoi(strs[i].c_str());
+  length += sizeof(IPRecord);
+  socket_.send_to(
+      boost::asio::buffer(ssh_broadcast_buffer, length), endpoint_
+      );
+}
+
 void mDNS::prepare_PTR_query() {
-  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + MAX_BUFFER_SIZE + sizeof(DNSQuery); i++) // czyścimy buffer
     query_PTR_buf[i] = '\0';
   DNSHeader *header = NULL;
   DNSQuery *query = NULL;
@@ -194,7 +260,7 @@ void mDNS::prepare_PTR_query() {
   length += sizeof(DNSQuery);
   query->type = htons(12); // PTR
   query->qclass = htons(1);
-  if (DNS_SD) {
+  /*if (DNS_SD) {
     DNSQuery *ssh_query;
     unsigned char *ssh_query_name = (unsigned char*)&query_PTR_buf[length];
     unsigned char *ssh_DNSname = (unsigned char*) SSH_QUERY;
@@ -204,7 +270,7 @@ void mDNS::prepare_PTR_query() {
     length += sizeof(DNSQuery);
     ssh_query->type = htons(1); //A
     ssh_query->qclass = htons(1);
-  }
+  }*/
   query_buf_length = length;
 }
 
@@ -215,12 +281,12 @@ void mDNS::change_PTR_query_ID() {
 }
 
 void mDNS::send_A_query(unsigned char* name) {
-  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + MAX_BUFFER_SIZE + sizeof(DNSQuery); i++) // czyścimy buffer
     query_A_buf[i] = '\0';
   DNSHeader *header = NULL;
   DNSQuery *query = NULL;
   header = (DNSHeader*)&query_A_buf;
-  header->ID = htons (rand()%65537);
+  header->ID = htons(rand()%65537);
   header->rd = 1;
   header->qr = 0;
   header->tc = 0;
@@ -248,7 +314,7 @@ void mDNS::send_A_query(unsigned char* name) {
 }
 
 void mDNS::response_PTR(uint16_t ID) {
-  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + MAX_BUFFER_SIZE + sizeof(DNSQuery); i++) // czyścimy buffer
     response_PTR_buf[i] = '\0';
   int length = 0;
   DNSHeader *header = NULL;
@@ -289,7 +355,7 @@ void mDNS::response_PTR(uint16_t ID) {
 }
 
 void mDNS::response_A(uint16_t ID) {
-  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + MAX_BUFFER_SIZE + sizeof(DNSQuery); i++) // czyścimy buffer
     response_A_buf[i] = '\0';
   int length = 0;
   DNSHeader *header = NULL;
@@ -340,7 +406,7 @@ void mDNS::send_PTR_query() {
 }
 
 void mDNS::receive() {
-  for (unsigned int i = 0; i < sizeof(DNSHeader) + 256 + sizeof(DNSQuery); i++) // czyścimy buffer
+  for (unsigned int i = 0; i < sizeof(DNSHeader) + MAX_BUFFER_SIZE + sizeof(DNSQuery); i++) // czyścimy buffer
     answer[i] = '\0';
   socket_.async_receive(
     boost::asio::buffer(answer),// sender_endpoint_,
@@ -372,7 +438,6 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
             char translation[strlen((char*) query_)];
             for (unsigned int i = 1; i < strlen((char*) query_); i++) {
               int x = (int) query_[i];
-              //std::cout<< x << " ";
               if (x >= 32 && x <= 126) // check if printable
                 translation[i-1] = static_cast<char>(x);//(char) std::to_string(x).c_str();
               else
@@ -419,8 +484,19 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           response = (unsigned char*)&answer[length];
           length += strlen((const char*) response) + 1;
           char translation[strlen((char*) response)];
+          char domain[strlen((char*) domain_name)];
+          for (unsigned int i = 1; i < strlen((char*) domain_name); i++) {
+            int x = (int) domain_name[i];
+            if (x >= 32 && x <= 126) // check if printable
+              domain[i-1] = static_cast<char>(x);
+            else
+              domain[i-1] = '.';
+          }
+          domain[strlen((char*) domain_name)-1] = '.';
+          domain[strlen((char*) domain_name)] = '\0';
           std::string IP = "";
           std::ostringstream convert;
+          uint j = 0; bool pass = true;
           switch (ntohs(record->rtype)) {
             case 12: //PTR
               //std::cout << " Otrzymano odpowiedź PTR \n";
@@ -446,30 +522,84 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               }
               IP = convert.str();
               //std::cout << "IP to " << IP << std::endl;
-              uint i;
-              for(i = 0; i < connections.size(); i++) {
-                if (connections[i].ip.compare(IP) == 0) {
-                  connections[i].udp_credits = 12;
-                  connections[i]._opoznienia = true;
+              j = 0;
+              pass = true;
+              while ((domain[j] != '.') and (j < strlen((char*) domain)))
+                j++;
+              pass = true;
+              for (uint i = 0; i < strlen((char*) SERVICE_NAME); i++) {
+                pass = (i+j+1 < strlen((char*) domain));
+                if (!pass)
                   break;
+                pass = (domain[i+j+1] == SERVICE_NAME[i]);
+                if (!pass)
+                  break;
+              }
+              if (pass) {
+                uint i;
+                for(i = 0; i < connections.size(); i++) {
+                  if (connections[i].ip.compare(IP) == 0) {
+                    connections[i].udp_credits = CREDITS_RATE;
+                    connections[i].icmp_credits = CREDITS_RATE;
+                    connections[i]._opoznienia = true;
+                    break;
+                  }
+                }
+                if (i == connections.size()) {
+                  c.ip = IP;
+                  c.udp_credits = CREDITS_RATE;
+                  c.tcp_credits = 0;
+                  c.icmp_credits = CREDITS_RATE;
+                  c._opoznienia = true;
+                  c._ssh = false;
+                  c.pos_udp = 0;
+                  c.pos_tcp = 0;
+                  c.pos_icmp = 0;
+                  for (int i = 0; i < 10; i++) {
+                    c.udp[i] = 0; c.ssh[i] = 0; c.icmp[i] = 0;
+                  }
+                  connections.push_back(c);
                 }
               }
-              if (i == connections.size()) {
-                c.ip = IP;
-                c.udp_credits = 6;
-                c.tcp_credits = 6;
-                c._opoznienia = true;
-                c._ssh = true;
-                c.pos_udp = 0;
-                c.pos_tcp = 0;
-                for (int i = 0; i < 10; i++) {
-                  c.udp[i] = 0; c.ssh[i] = 0; c.icmp[i] = 0;
+              else {
+                pass = true;
+                for (uint i = 0; i < strlen((char*) SSH_SERVICE); i++) {
+                  pass = (i+j+1 < strlen((char*) domain));
+                  if (!pass)
+                    break;
+                  pass = (domain[i+j+1] == SSH_SERVICE[i]);
+                  if (!pass)
+                    break;
                 }
-                connections.push_back(c);
+                if (pass) {
+                  uint i;
+                  for(i = 0; i < connections.size(); i++) {
+                    if (connections[i].ip.compare(IP) == 0) {
+                      connections[i].tcp_credits = CREDITS_RATE;
+                      connections[i]._ssh = true;
+                      break;
+                    }
+                  }
+                  if (i == connections.size()) {
+                    c.ip = IP;
+                    c.udp_credits = 0;
+                    c.tcp_credits = CREDITS_RATE;
+                    c.icmp_credits = 0;
+                    c._opoznienia = false;
+                    c._ssh = true;
+                    c.pos_udp = 0;
+                    c.pos_tcp = 0;
+                    c.pos_icmp = 0;
+                    for (int i = 0; i < 10; i++) {
+                      c.udp[i] = 0; c.ssh[i] = 0; c.icmp[i] = 0;
+                    }
+                    connections.push_back(c);
+                  }
+                }
               }
+
               break;
             default: // ignorujemy
-              //std::cout << "cicho ignorujemy odpowiedź\n";
               break;
           }
         }

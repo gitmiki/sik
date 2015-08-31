@@ -81,5 +81,4 @@ void udp_client::handle_receive_from(const boost::system::error_code& error, siz
     }
   }
   sleep(interval_);
-  //send();
 }
