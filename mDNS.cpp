@@ -449,14 +449,14 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               uint i;
               for(i = 0; i < connections.size(); i++) {
                 if (connections[i].ip.compare(IP) == 0) {
-                  connections[i].active = 12;
+                  connections[i].credits = 12;
                   connections[i]._opoznienia = true;
+                  break;
                 }
-                break;
               }
               if (i == connections.size()) {
                 c.ip = IP;
-                c.active = 12;
+                c.credits = 6;
                 c.alive = false;
                 c._opoznienia = true;
                 c._ssh = false;

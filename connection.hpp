@@ -1,7 +1,7 @@
 typedef struct Connection {
   std::string ip;
   bool alive;
-	int active;
+	int credits;
   int pos;
 	bool _opoznienia;
 	bool _ssh;

@@ -8,6 +8,8 @@ class udp_server
 public:
   udp_server(boost::asio::io_service& io_service, short port);
 
+  void start_receive();
+
   void handle_receive_from(const boost::system::error_code& error,
       size_t bytes_recvd);
 
