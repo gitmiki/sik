@@ -7,7 +7,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-//#include <boost/thread.hpp>
 #include <thread>
 #include <string>
 #include <ctime>
@@ -28,8 +27,9 @@ void set_options(int argc, char *argv[]);
 
 void write_connection(Connection c) {
 	std::cout << "IP = " << c.ip << std::endl;
-	std::cout << "credits = " << c.credits << std::endl;
-	std::cout << "pos = " << c.pos << std::endl;
+	std::cout << "udp_credits = " << c.udp_credits << std::endl;
+	std::cout << "tcp_credits = " << c.tcp_credits << std::endl;
+	std::cout << "pos = " << c.pos_udp << std::endl;
 	std::cout << "opoznienia_ = " << c._opoznienia << std::endl;
 	std::cout << "ssh_ =" << c._ssh << std::endl;
 	std::cout << "udp  ssh  icmp" << std::endl;
@@ -41,22 +41,24 @@ int main(int argc, char *argv[]) {
 	set_options(argc, argv);
 
 	Connection con;
-	con.credits = 12;
+	con.udp_credits = 12;
+	con.tcp_credits = 12;
 	con.alive = true;
 	con._opoznienia = true;
-	con._ssh = false;
-	con.pos = 0;
+	con._ssh = true;
+	con.pos_udp = 0;
+	con.pos_tcp = 0;
 	for (int i = 0; i < 10; i++) {
 		con.udp[i] = 0; con.ssh[i] = 0; con.icmp[i] = 0;
 	}
 	con.ip = "localhost";
-	connections.push_back(con);
+	//connections.push_back(con);
 	Connection con2;
-	con2.credits = 6;
+	con2.udp_credits = 6;
 	con2.alive = true;
 	con2._opoznienia = true;
 	con2._ssh = false;
-	con2.pos = 0;
+	con2.pos_udp = 0;
 	for (int i = 0; i < 10; i++) {
 		con2.udp[i] = 0; con2.ssh[i] = 0; con2.icmp[i] = 0;
 	}
@@ -74,6 +76,8 @@ int main(int argc, char *argv[]) {
 			std::thread thread1{[&io_service](){ io_service.run(); }};
 			udp_client c(io_service, std::to_string(UDP_PORT), FIND_INTERVAL);
 	    std::thread thread2{[&io_service](){ io_service.run(); }};
+			tcp_client c2(io_service, FIND_INTERVAL);
+			std::thread thread3{[&io_service](){ io_service.run(); }};
 
 			std::cout<<"MULTICAST START!"<<std::endl;
 			mDNS Multicast(io_service,
@@ -83,7 +87,6 @@ int main(int argc, char *argv[]) {
 					DNS_SD
 			);
 			std::thread thread4{[&io_service](){ io_service.run(); }};
-			//tcp_client c2(io_service, "localhost");
 	    //std::thread thread3{[&io_service](){ io_service.run(); }};
 						//udp_client c(io_service, "192.168.1.103", std::to_string(UDP_PORT), FIND_INTERVAL);
 						//std::thread thread2{[&io_service](){ io_service.run(); }};

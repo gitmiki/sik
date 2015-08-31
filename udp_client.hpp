@@ -16,12 +16,9 @@ private:
   boost::asio::io_service& io_service_;
   udp::socket socket_;
   udp::endpoint endpoint_;
-  //boost::posix_time::ptime t1;
-  //boost::posix_time::ptime t2;
   boost::uint64_t answer[2];
   boost::uint64_t reply[2];
   int interval_;
-  //std::string host_;
   std::string port_;
   boost::asio::deadline_timer timer_;
 };

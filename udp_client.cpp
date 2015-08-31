@@ -27,9 +27,9 @@ udp_client::udp_client(boost::asio::io_service& io_service, const std::string& p
 void udp_client::start_sending(const boost::system::error_code& /*e*/) {
   while (true) {
     for(uint i = 0; i < connections.size(); i++) {
-      if ((connections[i].credits > 0) && (connections[i]._opoznienia)) {
+      if ((connections[i].udp_credits > 0) && (connections[i]._opoznienia)) {
         send(connections[i].ip);
-        connections[i].credits--;
+        connections[i].udp_credits--;
       }
     }
     sleep(interval_);
@@ -75,8 +75,8 @@ void udp_client::handle_receive_from(const boost::system::error_code& error, siz
     //std::cerr << "Sent at: " << be64toh(reply[0]) << "\n" << "Answered at: " << be64toh(reply[1]) << "\n";
     for(uint i = 0; i < connections.size(); i++) {
       if (connections[i].ip.compare(host) == 0) {
-        connections[i].udp[connections[i].pos] = (int) msdiff.total_microseconds();
-        connections[i].pos = (connections[i].pos+1)%10;
+        connections[i].udp[connections[i].pos_udp] = (int) msdiff.total_microseconds();
+        connections[i].pos_udp = (connections[i].pos_udp+1)%10;
       }
     }
   }

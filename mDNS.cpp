@@ -449,26 +449,23 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               uint i;
               for(i = 0; i < connections.size(); i++) {
                 if (connections[i].ip.compare(IP) == 0) {
-                  connections[i].credits = 12;
+                  connections[i].udp_credits = 12;
                   connections[i]._opoznienia = true;
                   break;
                 }
               }
               if (i == connections.size()) {
                 c.ip = IP;
-                c.credits = 6;
-                c.alive = false;
+                c.udp_credits = 6;
+                c.tcp_credits = 6;
                 c._opoznienia = true;
-                c._ssh = false;
-                c.pos = 0;
+                c._ssh = true;
+                c.pos_udp = 0;
+                c.pos_tcp = 0;
                 for (int i = 0; i < 10; i++) {
                   c.udp[i] = 0; c.ssh[i] = 0; c.icmp[i] = 0;
                 }
                 connections.push_back(c);
-                //boost::asio::io_service io_service;
-                //std::cout << "odpalam udp_client\n";
-                //udp_client c(io_service, "192.168.1.103", std::to_string(3382), 1);
-    						//std::thread thread2{[&io_service](){ io_service.run(); }};
               }
               break;
             default: // ignorujemy

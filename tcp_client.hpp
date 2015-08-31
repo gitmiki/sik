@@ -6,16 +6,17 @@ using boost::asio::ip::tcp;
 class tcp_client
 {
 public:
-  tcp_client(boost::asio::io_service& io_service,
-      const std::string& server);
+  tcp_client(boost::asio::io_service& io_service, int interval);
+  void start_sending(const boost::system::error_code& /*e*/);
+  void connect(const std::string& host);
 
 private:
-  boost::posix_time::ptime t1;
-  boost::posix_time::ptime t2;
   tcp::resolver resolver_;
   tcp::socket socket_;
-  boost::asio::streambuf request_;
-  boost::asio::streambuf response_;
+  //boost::asio::streambuf request_;
+  //boost::asio::streambuf response_;
+  int interval_;
+  boost::asio::deadline_timer timer_;
 };
 
 #endif /* TCP_CLIENT_HPP */
