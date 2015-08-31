@@ -37,21 +37,30 @@ void write_connection(Connection c) {
 		std::cout << c.udp[i] << "  " << c.ssh[i] << "  " << c.icmp[i] << std::endl;
 }
 
-void start_UDP_client(const boost::system::error_code& /*e*/, std::string host) {
-	boost::asio::io_service io_service;
-	udp_client c(io_service, host, std::to_string(UDP_PORT), FIND_INTERVAL);
-	io_service.run();
-	//boost::thread thread1{[&io_service](){ io_service.run(); }};
-}
-
 int main(int argc, char *argv[]) {
 	set_options(argc, argv);
 
-	//Connection con;
-	//con._opoznienia = true;
-	//con.credits = 5;
-	//con.alive = 0;
-	//con.ip = "192.168.1.100";
+	Connection con;
+	con.credits = 12;
+	con.alive = true;
+	con._opoznienia = true;
+	con._ssh = false;
+	con.pos = 0;
+	for (int i = 0; i < 10; i++) {
+		con.udp[i] = 0; con.ssh[i] = 0; con.icmp[i] = 0;
+	}
+	con.ip = "localhost";
+	connections.push_back(con);
+	Connection con2;
+	con2.credits = 6;
+	con2.alive = true;
+	con2._opoznienia = true;
+	con2._ssh = false;
+	con2.pos = 0;
+	for (int i = 0; i < 10; i++) {
+		con2.udp[i] = 0; con2.ssh[i] = 0; con2.icmp[i] = 0;
+	}
+	con.ip = "192.168.1.103";
 	//connections.push_back(con);
 
 	try
@@ -63,8 +72,8 @@ int main(int argc, char *argv[]) {
 
 	    udp_server s(io_service, UDP_PORT);
 			std::thread thread1{[&io_service](){ io_service.run(); }};
-			//udp_client c(io_service, "192.168.1.103", std::to_string(UDP_PORT), FIND_INTERVAL);
-	    //std::thread thread2{[&io_service](){ io_service.run(); }};
+			udp_client c(io_service, std::to_string(UDP_PORT), FIND_INTERVAL);
+	    std::thread thread2{[&io_service](){ io_service.run(); }};
 
 			std::cout<<"MULTICAST START!"<<std::endl;
 			mDNS Multicast(io_service,
@@ -86,19 +95,10 @@ int main(int argc, char *argv[]) {
 
 			while (true) {
 				for(uint i=0; i < connections.size(); i++){
-					std::cout << i << "  ";
-					if ((!connections[i].alive) && (connections[i].credits > 0)) {
-						if (connections[i]._opoznienia) {
-							boost::asio::deadline_timer t(io_service, boost::posix_time::seconds(0));
-	  					t.async_wait(boost::bind(start_UDP_client,
-								boost::asio::placeholders::error, connections[i].ip));
-						}
-							connections[i].alive = true;
-					}
 					write_connection(connections[i]);
 				}
 				std::cout<<"Idę spać\n";
-				sleep(FIND_INTERVAL*10);
+				sleep(FIND_INTERVAL);
 			}
 
 			/*mDNS sMutlicast(io_service,
