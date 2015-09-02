@@ -477,16 +477,10 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           length += strlen((const char*) domain_name) + 1;
           record = (RRecord*)&answer[length];
           length += sizeof(RRecord)-sizeof(uint16_t);
-          unsigned char* response[3];
-          response[0] = (unsigned char*)&answer[length];
-          length += strlen((const char*) response[0]) + 1;
-          response[1] = (unsigned char*)&answer[length];
-          length += strlen((const char*) response[1]) + 1;
-          response[2] = (unsigned char*)&answer[length];
-          length += strlen((const char*) response[2]) + 1;
-          response[3] = (unsigned char*)&answer[length];
-          length += strlen((const char*) response[3]) + 1;
-          char translation[strlen((char*) response[1])];
+          unsigned char* response;
+          response = (unsigned char*)&answer[length];
+          length += strlen((const char*) response) + 1;
+          char translation[strlen((char*) response)];
           char domain[strlen((char*) domain_name)];
           for (unsigned int i = 1; i < strlen((char*) domain_name); i++) {
             int x = (int) domain_name[i];
@@ -503,15 +497,15 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           switch (ntohs(record->rtype)) {
             case 12: //PTR
               //std::cout << " Otrzymano odpowiedź PTR \n";
-              for (unsigned int i = 1; i < strlen((char*) response[1]); i++) {
-                int x = (int) response[1][i];
+              for (unsigned int i = 1; i < strlen((char*) response); i++) {
+                int x = (int) response[i];
                 if (x >= 32 && x <= 126) // check if printable
                   translation[i-1] = static_cast<char>(x);
                 else
                   translation[i-1] = '.';
               }
-              translation[strlen((char*) response[1])-1] = '.';
-              translation[strlen((char*) response[1])] = '\0';
+              translation[strlen((char*) response)-1] = '.';
+              translation[strlen((char*) response)] = '\0';
               //std::cout << "OTRZYMANA ODPOWIEDŹ TO " << translation << std::endl;
 
               send_A_query((unsigned char*) translation);
@@ -520,7 +514,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               //std::cout << " Otrzymano odpowiedź A\n";
               for (uint i = 0; i < (strlen((char*) response)); i++) {
                 convert << (int) response[i];
-                std::cout << (int) response[i];
+                std::cout << " i = " << i << std::endl;
                 if (i != (strlen((char*) response) - 1))
                   convert << '.';
               }
