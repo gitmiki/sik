@@ -110,7 +110,7 @@ void icmp_client::send_ping_request(int sock, char* s_send_addr) {
   icmp = (struct icmp *)&send_buffer[3];
   icmp->icmp_type = ICMP_ECHO;
   icmp->icmp_code = 0;
-  icmp->icmp_id = 0x13; // process identified by PID
+  icmp->icmp_id = 0x13;
   icmp->icmp_seq = htons(0); // sequential number
   data_len = snprintf(((char*) send_buffer+ICMP_HEADER_LEN),
                       sizeof(send_buffer)-ICMP_HEADER_LEN, "BASIC PING!");
@@ -124,8 +124,8 @@ void icmp_client::send_ping_request(int sock, char* s_send_addr) {
 
   len = sendto(sock, (void*) icmp, icmp_len, 0, (struct sockaddr *) &send_addr,
                (socklen_t) sizeof(send_addr));
-  if (icmp_len != (ssize_t) len)
-    syserr("partial / failed write");
+  //if (icmp_len != (ssize_t) len)
+  //  syserr("partial / failed write");
 
   //printf("wrote %zd bytes\n", len);
 }

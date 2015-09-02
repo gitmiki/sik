@@ -68,11 +68,11 @@ void udp_client::handle_send_to(const boost::system::error_code& error, size_t b
 
 void udp_client::handle_receive_from(const boost::system::error_code& error, size_t bytes_received, const std::string& host, boost::posix_time::ptime t1) {
   if (!error && bytes_received > 0) {
-    //std::cout<<"HOST = " << host << std::endl;
+    std::cout<<"HOST = " << host << std::endl;
     boost::posix_time::ptime t2 = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration msdiff = t2 - t1;
-    //std::cout << "Wysłanie pakietu UDP i odebranie odpowiedzi zajmuje " << msdiff.total_microseconds() << " mikrosekund" << std::endl;
-    //std::cerr << "Sent at: " << be64toh(reply[0]) << "\n" << "Answered at: " << be64toh(reply[1]) << "\n";
+    std::cout << "Wysłanie pakietu UDP i odebranie odpowiedzi zajmuje " << msdiff.total_microseconds() << " mikrosekund" << std::endl;
+    std::cerr << "Sent at: " << be64toh(reply[0]) << "\n" << "Answered at: " << be64toh(reply[1]) << "\n";
     for(uint i = 0; i < connections.size(); i++) {
       if (connections[i].ip.compare(host) == 0) {
         connections[i].udp[connections[i].pos_udp] = (int) msdiff.total_microseconds();
