@@ -478,8 +478,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           record = (RRecord*)&answer[length];
           length += sizeof(RRecord)-sizeof(uint16_t);
           unsigned char* response;
-          response = (unsigned char*)&answer[length];
-          length += strlen((const char*) response) + 1;
+          IPRecord *iprecord;
           char translation[strlen((char*) response)];
           char domain[strlen((char*) domain_name)];
           for (unsigned int i = 1; i < strlen((char*) domain_name); i++) {
@@ -497,6 +496,8 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           switch (ntohs(record->rtype)) {
             case 12: //PTR
               //std::cout << " Otrzymano odpowiedź PTR \n";
+              response = (unsigned char*)&answer[length];
+              length += strlen((const char*) response) + 1;
               for (unsigned int i = 1; i < strlen((char*) response); i++) {
                 int x = (int) response[i];
                 if (x >= 32 && x <= 126) // check if printable
@@ -512,19 +513,24 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               break;
             case 1: //A
               //std::cout << " Otrzymano odpowiedź A\n";
-              for (uint i = 0; i < (strlen((char*) response)); i++) {
-                convert << (int) response[i];
+              iprecord = (IPRecord*)&answer[length];
+              length += sizeof(IPRecord);
+              //for (uint i = 0; i < (strlen((char*) response)); i++) {
+            //    convert << (int) response[i];
                 //std::cout << " i = " << i << std::endl;
                 //if (i != (strlen((char*) response) - 1))
                 //  convert << '.';
+              //}
+              //convert << '.';
+              //response = (unsigned char*)&answer[length];
+              //length += strlen((const char*) response) + 1;
+              //for (uint i = 0; i < (strlen((char*) response)); i++) {
+            //    convert << (int) response[i];
+            //    convert << '.';
+            //  }
+              for (int i = 0; i < 4; i++) {
+                convert << iprecord[i] << ".";
               }
-              convert << '.';
-              response = (unsigned char*)&answer[length];
-              length += strlen((const char*) response) + 1;
-              for (uint i = 0; i < (strlen((char*) response)); i++) {
-                convert << (int) response[i];
-              }
-
 
               IP = convert.str();
               std::cout << "Otrzymane IP to " << IP << std::endl;
