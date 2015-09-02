@@ -518,7 +518,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
                   convert << '.';
               }
               IP = convert.str();
-              //std::cout << "IP to " << IP << std::endl;
+              std::cout << "Otrzymane IP to " << IP << std::endl;
               j = 0;
               pass = true;
               while ((domain[j] != '.') and (j < strlen((char*) domain)))
