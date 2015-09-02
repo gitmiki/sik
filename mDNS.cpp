@@ -514,6 +514,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               //std::cout << " Otrzymano odpowiedź A\n";
               for (uint i = 0; i < (strlen((char*) response)); i++) {
                 convert << (int) response[i];
+                std::cout << (int) response[i];
                 if (i != (strlen((char*) response) - 1))
                   convert << '.';
               }
