@@ -521,10 +521,10 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
               convert << '.';
               response = (unsigned char*)&answer[length];
               length += strlen((const char*) response) + 1;
-              for (uint i = 0; i < (stlen((char*) response)); i++) {
+              for (uint i = 0; i < (strlen((char*) response)); i++) {
                 convert << (int) response[i];
               }
-              
+
 
               IP = convert.str();
               std::cout << "Otrzymane IP to " << IP << std::endl;
