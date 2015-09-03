@@ -412,6 +412,25 @@ void mDNS::receive() {
       boost::asio::placeholders::bytes_transferred));
 }
 
+void mDNS::handle_PTR_answer(int length) {
+  unsigned char* response;
+  char translation[strlen((char*) response)];
+  response = (unsigned char*)&answer[length];
+  length += strlen((const char*) response) + 1;
+  for (unsigned int i = 1; i < strlen((char*) response); i++) {
+    int x = (int) response[i];
+    if (x >= 32 && x <= 126) // check if printable
+      translation[i-1] = static_cast<char>(x);
+    else
+      translation[i-1] = '.';
+  }
+  translation[strlen((char*) response)-1] = '.';
+  translation[strlen((char*) response)] = '\0';
+  std::cout << "OTRZYMANA ODPOWIEDŹ TO " << translation << std::endl;
+
+  send_A_query((unsigned char*) translation);
+}
+
 void mDNS::handle_receive_from(const boost::system::error_code& error,
     size_t bytes_recvd)
 {
@@ -477,9 +496,9 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           length += strlen((const char*) domain_name) + 1;
           record = (RRecord*)&answer[length];
           length += sizeof(RRecord)-sizeof(uint16_t);
-          unsigned char* response;
+          //unsigned char* response;
           IPRecord *iprecord;
-          char translation[strlen((char*) response)];
+          //char translation[strlen((char*) response)];
           char domain[strlen((char*) domain_name)];
           for (unsigned int i = 1; i < strlen((char*) domain_name); i++) {
             int x = (int) domain_name[i];
@@ -495,21 +514,7 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
           uint j = 0; bool pass = true;
           switch (ntohs(record->rtype)) {
             case 12: //PTR
-              //std::cout << " Otrzymano odpowiedź PTR \n";
-              response = (unsigned char*)&answer[length];
-              length += strlen((const char*) response) + 1;
-              for (unsigned int i = 1; i < strlen((char*) response); i++) {
-                int x = (int) response[i];
-                if (x >= 32 && x <= 126) // check if printable
-                  translation[i-1] = static_cast<char>(x);
-                else
-                  translation[i-1] = '.';
-              }
-              translation[strlen((char*) response)-1] = '.';
-              translation[strlen((char*) response)] = '\0';
-              //std::cout << "OTRZYMANA ODPOWIEDŹ TO " << translation << std::endl;
-
-              send_A_query((unsigned char*) translation);
+              handle_PTR_answer(length);
               break;
             case 1: //A
               //std::cout << " Otrzymano odpowiedź A\n";
@@ -528,8 +533,9 @@ void mDNS::handle_receive_from(const boost::system::error_code& error,
             //    convert << (int) response[i];
             //    convert << '.';
             //  }
+
               for (int i = 0; i < 4; i++) {
-                convert << iprecord[i] << ".";
+                convert << (int) iprecord[i] << ".";
               }
 
               IP = convert.str();

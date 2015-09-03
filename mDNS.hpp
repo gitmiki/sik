@@ -28,6 +28,7 @@ public:
   void handle_timeout(const boost::system::error_code& error);
   void handle_receive_from(const boost::system::error_code& error,
       size_t bytes_recvd);
+  void handle_PTR_answer(int length);
 
 private:
   boost::asio::ip::udp::socket socket_;
